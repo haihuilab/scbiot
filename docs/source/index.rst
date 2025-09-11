@@ -1,4 +1,4 @@
-Welcome to Lumache's documentation!
+Welcome to scBIOT's documentation!
 ===================================
 
 **scBIOT** is a Python library for Single-Cell Biological Insights via Omics Transformers (scBIOT).
