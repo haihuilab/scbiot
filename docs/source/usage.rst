@@ -6,29 +6,20 @@ Usage
 Installation
 ------------
 
-To use Lumache, first install it using pip:
+To use scBIOT, first install it using pip:
 
-.. code-block:: console
+pip install scbiot
 
-   (.venv) $ pip install lumache
-
-Creating recipes
+Preprocessing
 ----------------
 
-To retrieve a list of random ingredients,
-you can use the ``lumache.get_random_ingredients()`` function:
-
-.. autofunction:: lumache.get_random_ingredients
-
-The ``kind`` parameter should be either ``"meat"``, ``"fish"``,
-or ``"veggies"``. Otherwise, :py:func:`lumache.get_random_ingredients`
-will raise an exception.
-
-.. autoexception:: lumache.InvalidKindError
+To train the scBIOT models,
+you can use the ``scbiot.train()`` function:
 
 For example:
 
->>> import lumache
->>> lumache.get_random_ingredients()
-['shells', 'gorgonzola', 'parsley']
+import scbiot as scb
+scb = scb()
+scb.train()
+scb.inference(
 
