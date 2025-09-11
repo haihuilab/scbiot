@@ -1,0 +1,60 @@
+# Matplotlib style for scientific plotting
+# This is the revised style based on "SciencePlots"
+# see: https://github.com/garrettj403/SciencePlots
+
+# Set color cycle: blue, green, yellow, red, violet, gray
+axes.prop_cycle: cycler('color', ["#386cb0", "#660066","#336600",  "#D2691E",  "#A52A2A", "#FFB90F", "#7fc97f", "#fb9a99","#B8860B", "#CD1076", "#458B74","#E5CCFF", "#7071b1", "#0000FF", "#003366", "#663300", "#666600", "#7FFF00", "#330066", "#00FFFF", "#838B8B", "#330019", "#ffff33",  "#DEB887", "#5F9EA0", "#2F4F4F", "#8B4513", "#8B2323", "#FF7F50", "#a6cee3", "#66B2FF", "#8B7D6B", "#FF3319",  "#660000", "#CCCC00", "#be4d25", "#50C9CE", "#72A1E5", "#FCD3DE", "#2E382E", "#ffadad", "#ffd6a5", "#caffbf", "#9bf6ff", "#bdb2ff", "#8B6508", "#8B2323", "#00008B", "#458B00",  "#8B4513"])
+
+# Figure size
+figure.figsize : 3.3, 2.5  # max width is 3.5 for single column
+
+# Use serif fonts
+# font.serif: Times
+#font.family: Helvetica
+svg.fonttype: none
+mathtext.fontset: dejavuserif
+
+# Font sizes
+axes.labelsize: 8
+xtick.labelsize: 8
+ytick.labelsize: 8
+legend.fontsize: 8
+font.size: 8
+
+# Use LaTeX for math formatting
+text.usetex: True
+text.latex.preamble: \usepackage{amsmath} \usepackage{amssymb}
+
+# Set x axis
+xtick.direction: out
+xtick.major.size: 3
+xtick.major.width: 0.5
+xtick.minor.size: 1.5
+xtick.minor.width: 0.5
+xtick.minor.visible: False
+xtick.top: False
+
+# Set y axis
+ytick.direction: out
+ytick.major.size: 3
+ytick.major.width: 0.5
+ytick.minor.size: 1.5
+ytick.minor.width: 0.5
+ytick.minor.visible: False
+ytick.right: False
+
+# Set line widths
+axes.linewidth: 0.5
+grid.linewidth: 0.5
+lines.linewidth: 1.
+
+# Remove legend frame
+legend.frameon: False
+
+# Always save as 'tight'
+savefig.bbox: tight
+savefig.pad_inches: 0.05
+
+
+
+
