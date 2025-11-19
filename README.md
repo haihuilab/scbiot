@@ -4,13 +4,11 @@
 light-weight Python library that packages the preprocessing and embedding
 workflow we commonly apply to RNA, ATAC, and joint multi-omics datasets.
 It focuses on repeatable data preparation, explainable latent embeddings, and
-concise APIs that work out-of-the-box on synthetic examples as well as real
-AnnData/pandas matrices.
+concise APIs that work out-of-the-box on real AnnData data.
 
 ## Highlights
 
-- Batteries-included preprocessing: library-size normalisation, log1p transform,
-  and variance-based feature selection configured through a single helper.
+- Batteries-included preprocessing: preprocessing of ATAC peaks, iterative LSI, and annotation of gene activity.
 - A unified `ScBIOT` class that can embed RNA, ATAC, or paired multi-omics
   modalities and reuse the fitted pipeline for inference on new batches.
 - Built-in clustering (`k`-Means) and feature-loading inspection to reason
@@ -46,14 +44,10 @@ inside a fresh virtual environment.
 import numpy as np
 import pandas as pd
 from scbiot import ScBIOT
+import scanpy as sc
 
-# toy count matrix: cells x genes
-counts = pd.DataFrame(
-    np.random.poisson(1.2, size=(200, 1000)),
-    index=[f"cell_{i}" for i in range(200)],
-    columns=[f"gene_{j}" for j in range(1000)],
-)
 
+adata = sc.datasets.pbmc3k()
 model = ScBIOT(mode="RNA", latent_dim=16, n_top_genes=500)
 embeddings = model.train(counts)
 
