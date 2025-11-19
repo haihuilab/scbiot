@@ -1,122 +1,98 @@
-scimorph: theme_publication
-=============
+# scBIOT
 
-<p align="left">
-    <table>
-        <tr>
-            <td style="text-align: center;">PyPI version</td>
-            <td style="text-align: center;">
-                <a href="https://badge.fury.io/py/scimorph">
-                    <img src="https://badge.fury.io/py/scimorph.svg" alt="PyPI version" height="18"/>
-                </a>
-            </td>
-        </tr>
-        <tr>
-            <td style="text-align: center;">conda-forge version</td>
-            <td style="text-align: center;">
-                <a href="https://anaconda.org/conda-forge/scimorph">
-                    <img src="https://anaconda.org/conda-forge/scimorph/badges/version.svg" alt="conda-forge version" height="18"/>
-                </a>
-            </td>
-        </tr>
-    </table>
-</p>
+**scBIOT** (Single-Cell Biological Insights via Optimal Transport and Omics Transformers) is a
+light-weight Python library that packages the preprocessing and embedding
+workflow we commonly apply to RNA, ATAC, and joint multi-omics datasets.
+It focuses on repeatable data preparation, explainable latent embeddings, and
+concise APIs that work out-of-the-box on synthetic examples as well as real
+AnnData/pandas matrices.
 
-> **Warning**
-> : The `scimorph` library requires LaTeX for math formatting. Install it using:
->   `sudo apt install texlive texlive-latex-extra texlive-fonts-recommended cm-super dvipng`.
-> : Starting with version 1.0.0, you must add `import scimorph` **before** setting the style with `theme_publication('publication')`.
+## Highlights
 
+- Batteries-included preprocessing: library-size normalisation, log1p transform,
+  and variance-based feature selection configured through a single helper.
+- A unified `ScBIOT` class that can embed RNA, ATAC, or paired multi-omics
+  modalities and reuse the fitted pipeline for inference on new batches.
+- Built-in clustering (`k`-Means) and feature-loading inspection to reason
+  about latent components.
+- Pure Python + NumPy/Pandas/scikit-learn dependency stack — no GPU required.
 
-*Matplotlib styles for scientific figures*
+Documentation is published on [scbiot.readthedocs.io](https://scbiot.readthedocs.io/en/latest/)
+and mirrors the examples below.
 
-This repo has Matplotlib styles to format your figures for scientific papers, presentations and theses.
-
-<p align="center">
-<img src="https://github.com/haihuilab/scimorph/blob/main/examples/plots/fig01a.jpg" width="500">
-</p>
-
-You can find [the full tutorials of scimorph here](https://github.com/haihuilab/scimorph/wiki/Gallery).
-
-Getting Started
----------------
-
-The easiest way to install scimorph is by using `pip`:
+## Installation
 
 ```bash
-# to install the latest release (from PyPI)
-pip install scimorph
-
-# to install the latest commit (from GitHub)
-pip install git+https://github.com/haihuilab/scimorph
-
-# to clone and install from a local copy
-git clone https://github.com/haihuilab/scimorph.git
-cd scimorph
-pip install -e .
+pip install scbiot
 ```
 
-From version `v1.0.0` on, `import scimorph` is needed on top of your scripts so Matplotlib can make use of the styles.
+The package targets Python 3.9+ and only depends on NumPy, pandas, and
+scikit-learn. For documentation builds install `pip install scbiot[docs]`.
 
-**Notes:** 
-- scimorph-theme_publication requires matplotlib or seaborn
+### Optional extras
 
-Using the Styles
-----------------
+Depending on your workflow you can pull in heavier scientific stacks as extras:
 
-``"publication"`` is the primary style in this repo. Whenever you want to use it, simply add the following to the top of your python script:
+
+- `pip install scbiot` installs the CUDA-enabled FAISS + PyTorch combo (CUDA 12).
+
+
+For an exact replica of our Conda dev environment use `pip install -r requirements.txt`
+inside a fresh virtual environment.
+
+## Quick start
 
 ```python
-import matplotlib.pyplot as plt
-import scimorph
-
-theme_publication('publication')
-```
-
-
-Examples
---------
-```python
-import matplotlib.pyplot as plt
 import numpy as np
-from pathlib import Path
-from scimorph.theme_publication import theme_publication
-dir = Path.cwd()
-print('parent dir: ',dir)
+import pandas as pd
+from scbiot import ScBIOT
 
-x = np.linspace(0, 2 * np.pi, 500)
-y = np.sin(x)
-# df = pd.DataFrame({'x': x, 'y': y})
+# toy count matrix: cells x genes
+counts = pd.DataFrame(
+    np.random.poisson(1.2, size=(200, 1000)),
+    index=[f"cell_{i}" for i in range(200)],
+    columns=[f"gene_{j}" for j in range(1000)],
+)
 
-theme_publication('publication', 
-                    figsize='medium', 
-                    fontsize=None, 
-                    grid=True,
-                    border=True)
-plt.plot(x, y)
-plt.xlabel('x')
-plt.ylabel('y')
-plt.savefig(f'{dir}/examples/plots/fig01a.jpg')
-plt.show()
+model = ScBIOT(mode="RNA", latent_dim=16, n_top_genes=500)
+embeddings = model.train(counts)
 
+result = model.inference(counts, k=8)
+print(result.embeddings.head())
+print(result.clusters.value_counts())
+
+loadings = model.get_feature_loadings(top_n=5)
+print(loadings.head())
 ```
-The basic ``publication`` style is shown below:
 
-<img src="https://github.com/haihuilab/scimorph/blob/main/examples/plots/fig01a.jpg" width="500">
+To process a paired multi-omic dataset simply pass a dictionary where each key
+denotes a modality:
 
+```python
+rna = counts
+atac = counts.sample(frac=1.0, replace=True)  # stand-in for demo
+model = ScBIOT(mode="multi", latent_dim=24)
+embeddings = model.train({"RNA": rna, "ATAC": atac})
+```
 
+## API surface
 
-If you use ``scimorph`` in your paper/thesis, feel free to add it to the list!
+- `scbiot.ScBIOT`: orchestrates preprocessing, dimensionality reduction and
+  clustering.
+- `scbiot.ScBIOTResult`: simple dataclass returned by `inference`.
 
-Citing scimorph:
--------------------
+Refer to `examples/examples.py` for a runnable end-to-end notebook-friendly
+script, and the `tests/` folder to see terse usage patterns.
 
-    @article{scimorph,
-      author       = {Haihui Zhang et al},
-      title        = {haihuilab/scimorph},
-      month        = Jan,
-      year         = 2025,
-      publisher    = {github},
-      version      = {1.0.0},      
-      url          = {https://github.com/haihuilab/scimorph}
-    }
+## Development setup
+
+```bash
+git clone https://github.com/haihuilab/scbiot.git
+cd scbiot
+pip install -e .[dev,docs]
+pytest
+make -C docs html
+```
+
+We use Hatch for packaging; the version is stored in `src/scbiot/__about__.py`.
+See `CONTRIBUTING.md` (coming soon) for coding standards and contribution tips.

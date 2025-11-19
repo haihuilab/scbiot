@@ -1,0 +1,59 @@
+Usage
+=====
+
+Installation
+------------
+
+Install the latest released version from PyPI:
+
+.. code-block:: bash
+
+    pip install scbiot
+
+For documentation builds and development you can install the optional extras:
+
+.. code-block:: bash
+
+    pip install scbiot[docs,dev]
+
+Quick start
+-----------
+
+The :class:`scbiot.ScBIOT` class wraps the full preprocessing + embedding
+pipeline. Pass any matrix-like object where rows denote cells and columns denote
+genes (``pandas.DataFrame`` works best).
+
+.. code-block:: python
+
+    import numpy as np
+    import pandas as pd
+    from scbiot import scb
+
+    counts = pd.DataFrame(
+        np.random.poisson(1.2, size=(400, 2000)),
+        index=[f"cell_{i}" for i in range(400)],
+        columns=[f"gene_{j}" for j in range(2000)],
+    )
+
+    model = ScBIOT(mode="RNA", latent_dim=24, n_top_genes=1000)
+    embeddings = model.train(counts)
+
+    result = model.inference(counts, k=12)
+    print(result.embeddings.shape)
+    print(result.clusters.value_counts())
+
+Multi-omic inputs
+-----------------
+
+When ``mode="multi"`` the class accepts a mapping where the keys represent
+modalities. Every modality is preprocessed separately and concatenated before
+fitting the latent model.
+
+.. code-block:: python
+
+    multimodal = {
+        "RNA": counts,
+        "ATAC": counts.sample(frac=1.0, replace=True, random_state=0),
+    }
+    model = ScBIOT(mode="multi", latent_dim=32)
+    embeddings = model.train(multimodal)

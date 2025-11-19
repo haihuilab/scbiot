@@ -1,8 +1,110 @@
 [build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
+requires = ["hatchling>=1.21.0"]
+build-backend = "hatchling.build"
 
 [project]
 name = "scbiot"
-authors = [{name = "Haihui Zhang", email = "hanfei19@gmail.com"}]
-dynamic = ["version", "description"]
+description = "Single-Cell Biological Insights via Omics Transformers"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { file = "LICENSE" }
+authors = [{ name = "Haihui Zhang", email = "hanfei19@gmail.com" }]
+dynamic = ["version"]
+keywords = [
+  "single-cell",
+  "omics",
+  "optimal transport",
+  "Transformer",
+  "bioinformatics",
+  "rna",
+  "atac",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+  "faiss-gpu-cu12>=1.12.0",
+  "harmonypy>=0.0.10",
+  "ipykernel>=7.1.0",
+  "jax[cuda12]>=0.6.2",
+  "jaxlib>=0.6.2",
+  "leidenalg>=0.11.0",
+  "numpy>=1.23",
+  "pandas>=1.5",
+  "pot>=0.9.6.post1",
+  "pyranges>=0.1.4",
+  "scanpy>=1.11.4",
+  "scib-metrics==0.5.1",
+  "scikit-learn>=1.2",
+  "scikit-misc>=0.5.2",
+  "scimorph>=1.0.3",
+  "scvi-tools>=1.3.3",
+  "torch>=2.8.0",
+  "tqdm>=4.67.1",
+]
+
+[project.optional-dependencies]
+docs = [
+  "sphinx>=7.0",
+  "sphinx-rtd-theme>=1.3",
+]
+dev = [
+  "pytest>=8.0",
+]
+analysis = [
+  "harmony-pytorch==0.1.8",
+  "harmonypy==0.0.10",
+  "scanpy==1.11.4",
+  "scglue==0.4.0",
+  "scib==1.1.7",
+  "scib-metrics==0.5.1",
+  "scvi-tools==1.3.3",
+  "category_encoders==2.8.1",
+  "jax==0.6.2",
+  "wandb==0.21.1",
+  "POT==0.9.6.post1",
+]
+cpu = [
+  "faiss-cpu==1.9.0.post1",
+]
+gpu = [
+  "torch==2.8.0",
+  "faiss-gpu-cu12==1.12.0; platform_system == 'Linux'",
+]
+full = [
+  "scbiot[analysis,cpu,gpu]",
+]
+
+[project.urls]
+Homepage = "https://github.com/haihuilab/scbiot"
+Documentation = "https://scbiot.readthedocs.io/en/latest/"
+"Bug Tracker" = "https://github.com/haihuilab/scbiot/issues"
+Changelog = "https://github.com/haihuilab/scbiot/blob/main/CHANGES.md"
+
+[tool.hatch.version]
+path = "src/scbiot/__about__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/scbiot",
+  "README.md",
+  "README.rst",
+  "CHANGES.md",
+  "LICENSE",
+  "docs",
+  "examples",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/scbiot"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]

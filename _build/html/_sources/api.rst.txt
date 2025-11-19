@@ -1,0 +1,13 @@
+API
+===
+
+scBIOT exposes a lightweight surface API today. Full, auto-generated API docs
+will be added once the public classes stabilise. For now, the two key areas are:
+
+* ``scbiot.ot`` — optimal-transport utilities for co-embedding and integration.
+* ``scbiot.models`` — variational autoencoders used in the tutorials
+  (:mod:`scbiot.models.vae`).
+
+See the tutorial pages for end-to-end usage examples with ``scb.ot.integrate``
+and ``scb.models.vae(...)``. If you prefer docstrings in your IDE, you can
+inspect them directly in the source tree under ``src/scbiot/``.
