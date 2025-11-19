@@ -1,10 +1,10 @@
 # scBIOT
 
-**scBIOT** (Single-Cell Biological Insights via Optimal Transport and Omics Transformers) is a
-light-weight Python library that packages the preprocessing and embedding
-workflow we commonly apply to RNA, ATAC, and joint multi-omics datasets.
-It focuses on repeatable data preparation, explainable latent embeddings, and
-concise APIs that work out-of-the-box on real AnnData data.
+**scBIOT** is a lightweight Python library for single-cell omics integration. 
+It bundles the preprocessing and embedding workflows we routinely apply to RNA, ATAC, 
+and joint multi-omics datasets. The library emphasizes reproducible data preparation, 
+single-cell clustering using embeddings derived from optimal transport and Transformer-based VAEs, 
+and concise APIs that work out of the box on AnnData data.
 
 ## Highlights
 
