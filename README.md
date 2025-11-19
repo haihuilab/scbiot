@@ -43,37 +43,57 @@ inside a fresh virtual environment.
 ```python
 import numpy as np
 import pandas as pd
-from scbiot import ScBIOT
+import scbiot as scb
 import scanpy as sc
 
 
 adata = sc.datasets.pbmc3k()
-model = ScBIOT(mode="RNA", latent_dim=16, n_top_genes=500)
-embeddings = model.train(counts)
 
-result = model.inference(counts, k=8)
-print(result.embeddings.head())
-print(result.clusters.value_counts())
+sc.pp.highly_variable_genes(adata, n_top_genes=2000, flavor="seurat_v3", batch_key='batch')
+sc.pp.normalize_total(adata)
+sc.pp.log1p(adata)
+sc.pp.scale(adata)
+sc.tl.pca(adata, n_comps=50, use_highly_variable=True)
 
-loadings = model.get_feature_loadings(top_n=5)
-print(loadings.head())
+adata, metrics = scb.ot.integrate(adata, modality='rna', obsm_key='X_pca', batch_key='batch', out_key='X_ot')
+print(metrics)
+
+sc.pp.neighbors(adata, use_rep='X_ot')
+sc.tl.umap(adata)
+sc.tl.leiden(adata, resolution=0.8, key_added='leiden_X_ot')
+
+model = scb.models.vae(adata, verbose=True)
+model.train()
+
+SCBIOT_LATENT_KEY = "scBIOT"
+adata.obsm[SCBIOT_LATENT_KEY] = model.get_latent_representation(n_compoents=50, svd_solver='arpack', random_state=42)
+
 ```
 
-To process a paired multi-omic dataset simply pass a dictionary where each key
-denotes a modality:
+To process snATAC-seq dataset
 
 ```python
-rna = counts
-atac = counts.sample(frac=1.0, replace=True)  # stand-in for demo
-model = ScBIOT(mode="multi", latent_dim=24)
-embeddings = model.train({"RNA": rna, "ATAC": atac})
+
+# Usage
+adata_top = scb.pp.remove_promoter_proximal_peaks(
+    adata,
+    f"{dir}/inputs/gencode.vM25.chr_patch_hapl_scaff.annotation.gtf.gz"    
+)
+
+# Peak selection
+scb.pp.find_variable_features(adata_top, batch_key="batchname_all")
+
+# TF-IDF
+scb.pp.add_iterative_lsi(adata_top, n_components=31, drop_first_component=True, add_key="X_lsi")
+
+# Save back
+adata.obsm["X_lsi"] = adata_top.obsm["X_lsi"]
+adata.obsm["Unintegrated"] = adata_top.obsm["X_lsi"]
+
+
 ```
 
 ## API surface
-
-- `scbiot.ScBIOT`: orchestrates preprocessing, dimensionality reduction and
-  clustering.
-- `scbiot.ScBIOTResult`: simple dataclass returned by `inference`.
 
 Refer to `examples/examples.py` for a runnable end-to-end notebook-friendly
 script, and the `tests/` folder to see terse usage patterns.
