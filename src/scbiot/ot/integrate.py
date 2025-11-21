@@ -133,6 +133,38 @@ def _sinkhorn_uot_torch(
     return u, v, K
 
 
+@torch.no_grad()
+def _sinkhorn_balanced_torch(
+    M: torch.Tensor,
+    a: torch.Tensor,
+    b: torch.Tensor,
+    eps: float = 0.05,
+    iters: int = 1000,
+    tol: float = 1e-6,
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    dtype = M.dtype
+    tiny = torch.finfo(dtype).eps
+    K = torch.exp(-M / eps)
+    v = torch.ones_like(b)
+    u = torch.ones_like(a)
+
+    for _ in range(iters):
+        Kv = torch.matmul(K, v).clamp_min(tiny)
+        u_new = a / Kv
+
+        KTu = torch.matmul(K.T, u_new).clamp_min(tiny)
+        v_new = b / KTu
+
+        if (
+            torch.max(torch.abs(torch.log(u_new) - torch.log(u))) < tol
+            and torch.max(torch.abs(torch.log(v_new) - torch.log(v))) < tol
+        ):
+            u, v = u_new, v_new
+            break
+        u, v = u_new, v_new
+    return u, v, K
+
+
 def _ot_barycentric_gpu(
     Bi: np.ndarray,
     R: np.ndarray,
@@ -141,6 +173,7 @@ def _ot_barycentric_gpu(
     cost_clip_q: Optional[float] = 0.90,
     clip_big: float = 50.0,
     ot_backend: str = "torch",
+    ot_mode: str = "unbalanced",
     iters: int = 1000,
     tol: float = 1e-6,
     use_gpu: bool = True,
@@ -151,6 +184,9 @@ def _ot_barycentric_gpu(
         ot_backend = "torch"
 
     assert ot_backend in {"torch", "pot"}
+    mode = str(ot_mode).lower()
+    if mode not in {"unbalanced", "balanced"}:
+        raise ValueError(f"ot_mode must be 'unbalanced' or 'balanced' (got {ot_mode!r})")
 
     if len(Bi) == 0:
         return Bi.copy()
@@ -168,6 +204,7 @@ def _ot_barycentric_gpu(
             reg_m=reg_m,
             cost_clip_q=cost_clip_q,
             clip_big=clip_big,
+            ot_mode=mode,
         )
 
     device = _torch_device(use_gpu, gpu_device)
@@ -183,21 +220,31 @@ def _ot_barycentric_gpu(
 
     M_full = torch.cdist(Bi_t, R_t, p=2).pow_(2)
     std_val = M_full.std().clamp_min(1e-8)
-    tau = float(reg_m / (reg_m + reg))
 
     if cost_clip_q is not None:
         thr = torch.quantile(M_full, q=float(cost_clip_q), dim=1, keepdim=True)
         M_full = torch.where(M_full > thr, thr + clip_big, M_full)
     M_norm = M_full / std_val
-    _, v, K = _sinkhorn_uot_torch(
-        M_norm,
-        a,
-        b,
-        eps=reg,
-        tau=tau,
-        iters=iters,
-        tol=tol,
-    )
+    if mode == "balanced":
+        _, v, K = _sinkhorn_balanced_torch(
+            M_norm,
+            a,
+            b,
+            eps=reg,
+            iters=iters,
+            tol=tol,
+        )
+    else:
+        tau = float(reg_m / (reg_m + reg))
+        _, v, K = _sinkhorn_uot_torch(
+            M_norm,
+            a,
+            b,
+            eps=reg,
+            tau=tau,
+            iters=iters,
+            tol=tol,
+        )
     num = torch.matmul(K, v[:, None] * R_t)
     den = torch.matmul(K, v).clamp_min(torch.finfo(dtype).eps)
     out = num / den[:, None]
@@ -211,12 +258,16 @@ def _ot_barycentric_pot(
     reg_m: float = 0.5,
     cost_clip_q: Optional[float] = 0.90,
     clip_big: float = 50.0,
+    ot_mode: str = "unbalanced",
 ) -> np.ndarray:
     if not _POT_AVAILABLE or ot is None:
         raise ModuleNotFoundError(
             "POT is required when ot_backend='pot'. Install it via `pip install POT` or "
             "`pip install scbiot[analysis]`."
         )
+    mode = str(ot_mode).lower()
+    if mode not in {"unbalanced", "balanced"}:
+        raise ValueError(f"ot_mode must be 'unbalanced' or 'balanced' (got {ot_mode!r})")
     if len(Bi) == 0 or len(R) == 0:
         return Bi.copy()
     Bi64 = np.asarray(Bi, dtype=np.float64, order="C")
@@ -228,28 +279,50 @@ def _ot_barycentric_pot(
         M = np.where(M > thr, thr + clip_big, M)
     a = np.full(Bi.shape[0], 1.0 / max(Bi.shape[0], 1), dtype=np.float64)
     b = np.full(R.shape[0], 1.0 / max(R.shape[0], 1), dtype=np.float64)
-    try:
-        T = ot.unbalanced.sinkhorn_unbalanced(
-            a,
-            b,
-            M,
-            reg,
-            reg_m,
-            method="sinkhorn_stabilized",
-            numItermax=1000,
-            stopThr=1e-6,
-            verbose=False,
-        )
-    except TypeError:
-        T = ot.unbalanced.sinkhorn_unbalanced(
-            a,
-            b,
-            M,
-            reg,
-            reg_m,
-            numItermax=1000,
-            stopThr=1e-6,
-        )
+    if mode == "balanced":
+        try:
+            T = ot.sinkhorn(
+                a,
+                b,
+                M,
+                reg,
+                method="sinkhorn_stabilized",
+                numItermax=1000,
+                stopThr=1e-6,
+                verbose=False,
+            )
+        except TypeError:
+            T = ot.sinkhorn(
+                a,
+                b,
+                M,
+                reg,
+                numItermax=1000,
+                stopThr=1e-6,
+            )
+    else:
+        try:
+            T = ot.unbalanced.sinkhorn_unbalanced(
+                a,
+                b,
+                M,
+                reg,
+                reg_m,
+                method="sinkhorn_stabilized",
+                numItermax=1000,
+                stopThr=1e-6,
+                verbose=False,
+            )
+        except TypeError:
+            T = ot.unbalanced.sinkhorn_unbalanced(
+                a,
+                b,
+                M,
+                reg,
+                reg_m,
+                numItermax=1000,
+                stopThr=1e-6,
+            )
     row_sum = T.sum(1, keepdims=True) + 1e-12
     Bi_to_R = (T / row_sum) @ R64
     return Bi_to_R.astype(Bi.dtype, copy=False)
@@ -812,6 +885,7 @@ def integrate_ot(
     use_gpu: bool = True,
     gpu_device: int = 0,
     ot_backend: str = "torch",
+    ot_mode: str = "unbalanced",
     # ---- NEW supervised knobs ----
     true_label_key: Optional[str] = None,  # e.g., "cell_type". If None -> unsupervised as before.
     lam_sup: float = 0.60,                 # pull to own-class mean (0 disables)
@@ -856,8 +930,12 @@ def integrate_ot(
         Seed for stochastic steps used in subsampling and initialization.
     verbose
         Print progress information when ``True``.
-    use_gpu / gpu_device / ot_backend
-        Compute backend selection for OT (Torch by default, POT when requested).
+    use_gpu / gpu_device / ot_backend / ot_mode
+        Compute backend selection for OT (Torch by default, POT optional) and whether
+        to run unbalanced OT (default) or balanced OT for stronger batch mixing. When
+        ``ot_mode='balanced'`` and ``reference='largest'`` (the default), the algorithm
+        automatically switches to the ``'union'`` reference so every batch moves
+        symmetrically.
     true_label_key
         Optional ``adata.obs`` column for semi-supervised guidance.
     lam_sup / lam_repulse
@@ -875,6 +953,10 @@ def integrate_ot(
     -----
     The function updates ``adata`` in place and also returns it for convenience.
     """
+    mode_norm = str(ot_mode).lower()
+    if mode_norm not in {"balanced", "unbalanced"}:
+        raise ValueError("ot_mode must be 'balanced' or 'unbalanced'")
+
     X0 = _as_nd_f32_c(adata.obsm[obsm_key])
     b_raw = adata.obs[batch_key].to_numpy()
     le = LabelEncoder()
@@ -893,11 +975,16 @@ def integrate_ot(
     else:
         y, n_labels = None, 0
 
-    # reference batch selection
-    if str(reference).lower() == "largest":
+    reference_norm = str(reference).lower()
+    force_union = mode_norm == "balanced" and reference_norm == "largest"
+    ref_mode = "union" if (reference_norm == "union" or force_union) else reference_norm
+
+    if reference_norm == "largest":
         vals, counts = np.unique(b_raw, return_counts=True)
         ref_label_raw = vals[np.argmax(counts)]
         ref_label_enc = int(np.where(le.classes_ == ref_label_raw)[0][0])
+    elif reference_norm == "union":
+        ref_label_enc = 0
     else:
         # if integer was passed, use it; else fallback to 0
         try:
@@ -937,6 +1024,9 @@ def integrate_ot(
         )
         print(f"[baseline] KNN backend={backend} mix={mix0:.4f} strain={strain0:.5f}")
 
+    if force_union and verbose:
+        print("[ot] balanced mode -> using reference='union' for symmetric mixing")
+
     no_imp = 0
     for it in range(1, max_iter + 1):
         t = (it - 1) / max(1, max_iter - 1)
@@ -945,7 +1035,6 @@ def integrate_ot(
         step = _lerp(step_lo, step_hi, t)
         cost_clip_q = _lerp(q_start, q_end, t)
 
-        ref_mode = str(reference).lower()
         if ref_mode == "union":
             R, packs, _ = _compute_prototypes_union(
                 X, b, K_ref, K_batch, random_state + it, use_gpu=use_gpu, device=gpu_device, y=y
@@ -986,6 +1075,7 @@ def integrate_ot(
                 cost_clip_q=cost_clip_q,
                 clip_big=50.0,
                 ot_backend=ot_backend,
+                ot_mode=ot_mode,
                 iters=1000,
                 tol=1e-6,
                 use_gpu=use_gpu,
@@ -994,7 +1084,8 @@ def integrate_ot(
             disp_proto = Bi_to_R - Bi
             norm_move = np.linalg.norm(disp_proto, axis=1)
             s_dist = 1.0 / (1.0 + (norm_move / (norm_move.std() + 1e-8)))
-            alpha_i = s_dist[nn_idx] * (1.0 - 0.35 * bridge_score[idx])
+            bridge_damp = 0.20 if mode_norm == "balanced" else 0.35
+            alpha_i = s_dist[nn_idx] * (1.0 - bridge_damp * bridge_score[idx])
             alpha[idx] = alpha_i.astype(X.dtype, copy=False)
             shift[idx] = disp_proto[nn_idx].astype(X.dtype, copy=False)
 

@@ -1,0 +1,155 @@
+---
+title: "scBIOT in R"
+output: html_document
+---
+
+More detailed please check tutorials: scbiot.readthedocs.io/en/stable/
+```{r}
+# rm(list=ls())
+library(Seurat)
+library(reticulate)
+# devtools::install_github("satijalab/seurat-data")
+# SeuratData::InstallData("ifnb")
+library(SeuratData)
+library(tidyverse)
+```
+
+Load and process pbmc data
+```{r}
+data("ifnb")
+alldata <- UpdateSeuratObject(ifnb)
+alldata[["pct_mt"]] <- PercentageFeatureSet(alldata, pattern = "^MT-")
+alldata <- subset(alldata, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & pct_mt < 5)
+```
+
+## Converting Seurat object to AnnData
+scBIOT relies on the [AnnData] object. 
+```{r}
+library(reticulate)
+# devtools::install_github("cellgeni/sceasy")
+library(sceasy)
+
+sc <- import("scanpy", convert = FALSE)
+scb <- import("scbiot", convert = FALSE)
+```
+
+```{r}
+adata <- sceasy::convertFormat(alldata, from="seurat", to="anndata", main_layer="counts", drop_single_values=FALSE)
+print(adata)
+
+sceasy::convertFormat(
+  alldata,
+  from = "seurat",
+  to = "anndata",
+  main_layer = "counts",
+  drop_single_values = FALSE,
+  outFile = "ifnb.h5ad"   # <- this makes the .h5ad file
+)
+```
+
+Run PCA
+```{r}
+sc$pp$highly_variable_genes(
+  adata,
+  n_top_genes = as.integer(2000),
+  flavor = "seurat_v3",
+  batch_key = "stim"
+)
+sc$pp$normalize_total(adata)
+sc$pp$log1p(adata)
+sc$pp$scale(adata)
+sc$tl$pca(adata, n_comps = as.integer(50), use_highly_variable = TRUE)
+```
+
+Run optimal transport
+```{r}
+res <-  scb$ot$integrate(adata, modality='rna', obsm_key='X_pca', batch_key='stim', out_key='X_ot',
+                         ot_mode='balanced',  
+                        
+                         )
+adata   <-  res[[0]]
+metrics <-  res[[1]]
+```
+Run UMAP and Leiden clustering on the OT result
+```{r}
+sc$pp$neighbors(adata, use_rep='X_ot')
+sc$tl$umap(adata)
+sc$tl$leiden(adata, resolution=0.8, key_added='leiden_X_ot')
+adata
+```
+
+```{r, fig.width=2.5, fig.height=2.5, dpi=300}
+ot <- as.matrix(adata$obsm['X_umap'])
+rownames(ot) = colnames(alldata)
+alldata[["ot"]] <- CreateDimReducObject(embeddings = ot, key = "ot_umap_", assay = DefaultAssay(alldata))
+
+DimPlot(alldata, reduction = "ot", group.by = "stim", label = TRUE) + ggtitle("Optimal Transport Integration")
+```
+
+
+
+
+```{r}
+# run setup_anndata
+scb$pp$setup_anndata(adata, var_key='X_ot', batch_key='stim', pseudo_key='leiden_X_ot', true_key=NULL, overwrite=TRUE)
+```
+# Train the model
+```{r}
+model <- scb$models$vae(adata, verbose=TRUE)
+model$train()
+```
+
+# get latent representation for UMAP and clustering
+```{r}
+# get the latent represenation
+latent <- model$get_latent_representation(n_compoents=as.integer(30), 
+                                          svd_solver='arpack', 
+                                          random_state=as.integer(42))
+
+# put it back in our original Seurat object
+latent <- as.matrix(latent)
+rownames(latent) = colnames(alldata)
+alldata[["scbiot"]] <- CreateDimReducObject(embeddings = latent, key = "scbiot_", assay = DefaultAssay(alldata))
+
+``` 
+
+Run UMAP and clustering
+```{r}
+alldata <- RunUMAP(alldata, dims = 1:30, reduction = "scbiot")
+alldata <- FindNeighbors(alldata, dims = 1:30, 
+                         reduction = "scbiot", 
+                         k.param = 15)
+
+alldata <- FindClusters(
+  alldata, 
+  resolution = 0.8,
+  cluster.name =  "scbiot.res.0.8")
+
+```
+Visualization
+```{r, fig.width=3.5, fig.height=2.5, dpi=150}
+DimPlot(alldata, reduction = "umap", group.by = "stim", label = TRUE) + ggtitle("scBIOT Integration")
+```
+Normalize data for feature plot
+```{r}
+alldata <- alldata %>% NormalizeData() %>% ScaleData() 
+```
+
+Feature plot
+```{r, fig.width=12, fig.height=5, dpi=300}
+FeaturePlot(alldata, features = c("SELL", "CREM", "CD8A", "GNLY", "CD79A", "FCGR3A", 
+    "CCL2", "PPBP"), min.cutoff = "q9", pt.size = 0.2, ncol = 4)
+```
+
+```{r, fig.width=5, fig.height=5, dpi=150}
+FeaturePlot(alldata, features = c("GNLY", "IFI6"), split.by = "stim", max.cutoff = 3, pt.size = 0.1, 
+    cols = c("grey", "darkred"))
+```
+
+```{r}
+info <- sessionInfo()
+info$loadedOnly <- NULL
+print(info, locale=FALSE)
+```
+
+
