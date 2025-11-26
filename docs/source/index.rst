@@ -1,5 +1,9 @@
+.. |scbiot-logo| image:: _static/scbiot_logo.svg
+   :height: 36px
+   :alt: scBIOT logo
+
 scBIOT documentation
-====================
+==================================
 
 **scBIOT** (Single-Cell Biological Insights via Optimal Transport and Omics Transformers) unifies optimal-transport alignment with Transformer encoders for preprocessing and embedding single-cell RNA, ATAC, and multi-omic data. The library is designed for reproducible benchmarking and scalable inference across modalities.
 

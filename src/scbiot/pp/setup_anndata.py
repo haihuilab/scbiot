@@ -79,7 +79,7 @@ def setup_anndata(
     var_key: str = "scBIOT_OT",
     batch_key: str = "batch",
     pseudo_key: Optional[str] = "leiden_scBIOT_OT",
-    true_key: Optional[str] = "cell_type",
+    true_key: Optional[str] = None,
     overwrite: bool = False,
 ) -> Dict[str, Any]:
     """
@@ -94,7 +94,8 @@ def setup_anndata(
     batch_key:
         ``adata.obs`` column that stores batch labels.
     pseudo_key / true_key:
-        Optional ``adata.obs`` columns for pseudo and ground-truth labels.
+        Optional ``adata.obs`` columns for pseudo and ground-truth labels. Set either to
+        ``None`` to disable that label type (``true_key`` defaults to ``None``).
     overwrite:
         Replace an existing registration in ``adata.uns`` when True.
     """

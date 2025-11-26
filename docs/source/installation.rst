@@ -1,7 +1,7 @@
 Installation
 ============
 
-scBIOT follows the same lightweight installation pattern as Scanpy: install the
+scBIOT follows the lightweight installation pattern: install the
 stable PyPI release or use an editable checkout for development and notebooks.
 
 Install from PyPI

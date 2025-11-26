@@ -6,7 +6,9 @@ from __future__ import annotations
 
 import os
 
-from .__about__ import __version__
+from .__about__ import __version__, __version_info__
+
+print(f"scbiot version {__version__}")
 
 # Keep OT helpers importable for docs without pulling heavy training dependencies.
 DOCS_MODE = bool(os.environ.get("SCBIOT_DOCS"))
@@ -29,8 +31,11 @@ else:
     )
     VAETrainer = None  # placeholder for backwards compatibility
 
+version_info = __version_info__
+
 __all__ = [
     "__version__",
+    "version_info",
     "VAE",
     "Model_VAE",
     "Encoder_model",

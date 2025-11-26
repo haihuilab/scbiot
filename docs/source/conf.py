@@ -77,6 +77,8 @@ source_suffix = {
 
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
+html_favicon = '_static/scbiot_logo.svg'
+html_logo = '_static/scbiot_logo.svg'
 
 # -- Options for EPUB output
 epub_show_urls = 'footnote'
