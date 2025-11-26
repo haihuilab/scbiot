@@ -56,6 +56,60 @@ Run OT integration on LSI space, then train the VAE and store the embedding:
     )
     print(metrics)
 
+    # 1. Compute neighbors using Harmony-corrected PCA
+    sc.pp.neighbors(adata, use_rep='X_ot', metric='cosine')
+    # 2. Run UMAP (optional)
+    sc.tl.umap(adata)
+
+    # 3. Leiden clustering
+    sc.tl.leiden(adata, resolution=0.02, key_added='leiden_X_ot')
+    adata
+
+    # Top row: color by batch
+    sc.pl.embedding(
+        adata,
+        basis="umap",                
+        color='batchname_all',
+        frameon=False,
+        legend_loc="on data",
+        legend_fontsize=10,
+        show=False
+    )
+
+    sc.pl.embedding(
+        adata,
+        basis="umap",                
+        color='final_cell_label',
+        frameon=False,
+        legend_loc="on data",
+        legend_fontsize=10,
+        show=False
+    )
+
+    # Bottom row: color by Leiden clusters
+    sc.pl.embedding(
+        adata,
+        basis="umap",
+        color='leiden_X_ot',     
+        frameon=False,
+        legend_loc="on data",
+        legend_fontsize=10,
+        show=False
+    )
+
+
+.. figure:: /_static/plots/atac_brain_large_window_integration_plot01.png
+   :alt: First diagnostic plot from the scATAC workflow.
+   :width: 50%
+
+.. figure:: /_static/plots/atac_brain_large_window_integration_plot02.png
+   :alt: Second diagnostic plot from the scATAC workflow.
+   :width: 50%
+
+.. figure:: /_static/plots/atac_brain_large_window_integration_plot03.png
+   :alt: Third diagnostic plot from the scATAC workflow.
+   :width: 50%
+
     scb.pp.setup_anndata(
         adata,
         var_key="X_ot",
@@ -135,6 +189,11 @@ Project to UMAP and compare batch mixing / clusters across embeddings:
         )
     plt.tight_layout()
 
+.. figure:: /_static/plots/atac_brain_large_window_integration_plot04.png
+   :alt: UMAPs of OT and scBIOT embeddings for scATAC brain dataset.
+   :width: 100%
+   
+
 Quantify integration with ``scib-metrics`` (batch correction + biology):
 
 .. code-block:: python
@@ -150,24 +209,6 @@ Quantify integration with ``scib-metrics`` (batch correction + biology):
     )
     bm.benchmark()
     bm.plot_results_table(min_max_scale=False)
-
-Figures from the notebook:
-
-.. figure:: /_static/plots/atac_brain_large_window_integration_plot01.png
-   :alt: First diagnostic plot from the scATAC workflow.
-   :width: 90%
-
-.. figure:: /_static/plots/atac_brain_large_window_integration_plot02.png
-   :alt: Second diagnostic plot from the scATAC workflow.
-   :width: 90%
-
-.. figure:: /_static/plots/atac_brain_large_window_integration_plot03.png
-   :alt: Third diagnostic plot from the scATAC workflow.
-   :width: 90%
-
-.. figure:: /_static/plots/atac_brain_large_window_integration_plot04.png
-   :alt: UMAPs of OT and scBIOT embeddings for scATAC brain dataset.
-   :width: 100%
 
 .. figure:: /_static/plots/atac_brain_large_window_integration_plot05.png
    :alt: scib-metrics benchmarking table for scATAC integration.
