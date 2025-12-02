@@ -14,6 +14,7 @@ from .integrate import (
     _minikm_centers,
     integrate_ot,
 )
+from ._presets import get_modality_preset
 
 # ===================== Centroid-level OT helper for very large datasets (memory-friendly) =====================
 
@@ -29,6 +30,7 @@ def integrate_centroids(
     use_gpu: bool = True,
     gpu_device: int = 0,
     tmp_path: Optional[str] = None,   # if not None -> write output to a memmap file
+    modality: Optional[str] = None,
     **integrate_kwargs: Any,
 ) -> Tuple[Any, Dict[str, float | int]]:
     """
@@ -62,6 +64,9 @@ def integrate_centroids(
     tmp_path
         If provided, the full integrated embedding is stored as a memmap file at this path
         to limit peak RAM usage. If None, a regular in-memory numpy array is used.
+    modality
+        Optional modality preset ("rna", "supervised", or "atac") to initialize OT hyper-parameters.
+        Preset values can still be overridden by explicit keyword arguments.
     **integrate_kwargs
         Forwarded directly to `integrate_ot` (e.g. reg, reg_m, reference, true_label_key, etc.).
 
@@ -72,7 +77,15 @@ def integrate_centroids(
     metrics
         Metrics dictionary returned by `integrate_ot`, augmented with `n_centroids`.
     """
-    seed = int(integrate_kwargs.get("random_state", 0))
+    if modality is not None:
+        if modality.lower() == "paired":
+            raise ValueError("integrate_centroids supports single-modality presets (rna, supervised, atac).")
+        preset_kwargs = dict(get_modality_preset(modality))
+    else:
+        preset_kwargs = {}
+    ot_kwargs: Dict[str, Any] = {**preset_kwargs, **integrate_kwargs}
+
+    seed = int(ot_kwargs.get("random_state", 0))
 
     # 1) Batch labels (cheap, no big arrays)
     b_raw_full = adata_full.obs[batch_key].to_numpy()
@@ -157,15 +170,16 @@ def integrate_centroids(
     )
     adata_anchor.obsm[obsm_key] = X_anchor.copy()
 
-    adata_anchor, metrics = integrate_ot(
-        adata_anchor,
+    call_kwargs: Dict[str, Any] = dict(ot_kwargs)
+    call_kwargs.update(
         obsm_key=obsm_key,
         batch_key=batch_key,
         out_key=out_key,
         use_gpu=use_gpu,
         gpu_device=gpu_device,
-        **integrate_kwargs,
     )
+
+    adata_anchor, metrics = integrate_ot(adata_anchor, **call_kwargs)
 
     X_anchor_ot = _as_nd_f32_c(adata_anchor.obsm[out_key])
     disp_anchor = X_anchor_ot - X_anchor  # (N_centroids, d_embed)
@@ -231,4 +245,3 @@ def integrate_centroids(
     metrics = dict(metrics)
     metrics["n_centroids"] = int(X_anchor.shape[0])
     return adata_full, metrics
-
