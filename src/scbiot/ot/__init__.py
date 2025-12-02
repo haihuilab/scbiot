@@ -9,11 +9,13 @@ from .coembedding import (
     label_transfer_shared_pca,
 )
 from .integrate import integrate_ot
+from .integrate_centroids import integrate_centroids
 from .integrate_paired import integrate_paired
 
 __all__ = [
     "integrate",
     "integrate_ot",
+    "integrate_centroids",    
     "integrate_paired",
     "build_aligned_coembedding",
     "label_transfer_shared_pca",
