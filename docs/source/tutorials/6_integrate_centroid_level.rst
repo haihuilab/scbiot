@@ -1,7 +1,7 @@
 6. Centroid-Level Optimal Transport
 ===================================
 
-scBIOT’s centroid workflow projects each batch down to a few thousand
+scBIOT’s centroid workflow projects each batch down to a few thousand centroid
 representatives, runs OT on the compressed problem, and then interpolates the
 displacement field back to every cell.  This keeps memory bounded while scaling
 from benchmarking-sized datasets to the 100-million-cell Tahoe experiment.

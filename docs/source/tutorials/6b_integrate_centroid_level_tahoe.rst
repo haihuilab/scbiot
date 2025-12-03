@@ -137,10 +137,10 @@ CPU or RAPIDS SingleCell on GPU (selected via ``mod`` above):
     )
 
 .. figure:: /_static/plots/tahoe_centroid_plot01.png
-   :alt: Synthetic million-cell subset showing plate and cell-line overlays.
+   :alt: 1 million-cell subset showing plate and cell-line overlays.
    :width: 80%
 
-   Synthetic million-cell subset showing plate (left) and cell-line (right) overlays for Tahoe-style centroid OT.
+   1 million-cell subset showing plate (left) and cell-line (right) overlays for Tahoe-style centroid OT.
 
 This sampled visualization mirrors the figure in the notebook while the
 full-resolution OT coordinates remain on disk for large-scale downstream jobs.
