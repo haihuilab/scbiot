@@ -1,4 +1,6 @@
 # ============== paste-and-run: loaders_from_adata_quantile_split.py ==============
+from __future__ import annotations
+
 import numpy as np
 import pandas as pd
 from typing import Dict, Tuple, Optional, List

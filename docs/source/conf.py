@@ -10,14 +10,16 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 os.environ.setdefault("SCBIOT_DOCS", "1")
 
+from scbiot.__about__ import __version__ as package_version
+
 # -- Project information
 
 project = 'scBIOT'
-copyright = '2025, Haihui Zhang'
+copyright = '2026, Haihui Zhang'
 author = 'Haihui Zhang'
 
-release = '1.0.0'
-version = '1.0.0'
+release = package_version
+version = package_version
 
 # -- General configuration
 
@@ -79,6 +81,8 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 html_favicon = '_static/scbiot_logo.svg'
 html_logo = '_static/scbiot_logo.svg'
+html_css_files = ['custom.css']
+html_js_files = ['landing-search.js']
 
 # -- Options for EPUB output
 epub_show_urls = 'footnote'

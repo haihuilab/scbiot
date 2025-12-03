@@ -1,0 +1,116 @@
+.scbiot-search-hero {
+    margin: 1.75rem 0 2.5rem;
+}
+
+.scbiot-search-form {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    max-width: 28rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid #e2e4ed;
+    background: #f8f9ff;
+    box-shadow: 0 4px 12px rgba(20, 23, 50, 0.08);
+}
+
+.scbiot-search-form:focus-within {
+    border-color: #7a81ff;
+    box-shadow: 0 4px 16px rgba(80, 86, 255, 0.25);
+}
+
+.scbiot-search-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    color: #5b5d70;
+}
+
+.scbiot-search-icon svg {
+    width: 1.35rem;
+    height: 1.35rem;
+}
+
+.scbiot-search-input {
+    flex: 1;
+    font-size: 1rem;
+    padding: 0.35rem 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+}
+
+.scbiot-search-input::placeholder {
+    color: #7a7c92;
+    opacity: 1;
+}
+
+.scbiot-search-input:focus {
+    outline: none;
+}
+
+.scbiot-search-shortcut {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.85rem;
+    color: #55566f;
+}
+
+.scbiot-search-shortcut kbd {
+    display: inline-block;
+    padding: 0.1rem 0.4rem;
+    border-radius: 6px;
+    border: 1px solid #d4d7e6;
+    background: #ffffff;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+    font-family: "IBM Plex Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.8rem;
+}
+
+.scbiot-search-shortcut span {
+    font-family: inherit;
+}
+
+@media (max-width: 480px) {
+    .scbiot-search-form {
+        border-radius: 16px;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }
+
+    .scbiot-search-shortcut {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    .scbiot-search-form {
+        background: #141627;
+        border-color: #2a2e44;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+    }
+
+    .scbiot-search-form:focus-within {
+        border-color: #8a91ff;
+        box-shadow: 0 6px 22px rgba(86, 98, 255, 0.35);
+    }
+
+    .scbiot-search-shortcut kbd {
+        background: #1f1f2d;
+        border-color: #3b3f5a;
+        color: #f1f1f5;
+    }
+
+    .scbiot-search-shortcut {
+        color: #bec2f4;
+    }
+
+    .scbiot-search-input::placeholder {
+        color: #adb2e5;
+    }
+}

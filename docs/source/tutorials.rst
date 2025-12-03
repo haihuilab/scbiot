@@ -24,4 +24,4 @@ repository root:
    tutorials/3_scatac_seq
    tutorials/4_paired_multiomics
    tutorials/5_unpaired_multiomics
-
+   tutorials/6_integrate_centroid_level
