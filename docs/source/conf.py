@@ -10,7 +10,12 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 os.environ.setdefault("SCBIOT_DOCS", "1")
 
-from scbiot.__about__ import __version__ as package_version
+# Importing scbiot triggers heavy optional deps; read version directly instead.
+ABOUT_PATH = ROOT / "src" / "scbiot" / "__about__.py"
+about: dict[str, object] = {}
+with ABOUT_PATH.open("r", encoding="utf-8") as fh:
+    exec(fh.read(), about)
+package_version = about["__version__"]  # type: ignore[index]
 
 # -- Project information
 
