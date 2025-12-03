@@ -23,8 +23,7 @@ and mirrors the examples below.
 pip install scbiot
 ```
 
-The package targets Python 3.9+ and only depends on NumPy, pandas, and
-scikit-learn. For documentation builds install `pip install scbiot[docs]`.
+For documentation builds install `pip install scbiot[docs]`.
 
 ### Optional extras
 

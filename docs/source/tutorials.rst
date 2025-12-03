@@ -25,3 +25,4 @@ repository root:
    tutorials/4_paired_multiomics
    tutorials/5_unpaired_multiomics
    tutorials/6_integrate_centroid_level
+   tutorials/7_brain_1.3M_integration
