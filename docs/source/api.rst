@@ -15,6 +15,7 @@ OT integration
 
    integrate
    integrate_ot
+   integrate_centroids
    integrate_paired
 
 
