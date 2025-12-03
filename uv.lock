@@ -3004,7 +3004,6 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "scikit-misc" },
     { name = "scimorph" },
-    { name = "scvi-tools" },
     { name = "torch" },
     { name = "tqdm" },
 ]
@@ -3017,10 +3016,8 @@ analysis = [
     { name = "jax" },
     { name = "pot" },
     { name = "scanpy" },
-    { name = "scglue" },
     { name = "scib" },
     { name = "scib-metrics" },
-    { name = "scvi-tools" },
     { name = "wandb" },
 ]
 cpu = [
@@ -3043,10 +3040,8 @@ full = [
     { name = "jax" },
     { name = "pot" },
     { name = "scanpy" },
-    { name = "scglue" },
     { name = "scib" },
     { name = "scib-metrics" },
-    { name = "scvi-tools" },
     { name = "torch" },
     { name = "wandb" },
 ]
@@ -3085,8 +3080,6 @@ requires-dist = [
     { name = "scanpy", specifier = ">=1.11.4" },
     { name = "scanpy", marker = "extra == 'analysis'", specifier = "==1.11.4" },
     { name = "scanpy", marker = "extra == 'full'", specifier = "==1.11.4" },
-    { name = "scglue", marker = "extra == 'analysis'", specifier = "==0.4.0" },
-    { name = "scglue", marker = "extra == 'full'", specifier = "==0.4.0" },
     { name = "scib", marker = "extra == 'analysis'", specifier = "==1.1.7" },
     { name = "scib", marker = "extra == 'full'", specifier = "==1.1.7" },
     { name = "scib-metrics", specifier = "==0.5.1" },
@@ -3095,57 +3088,16 @@ requires-dist = [
     { name = "scikit-learn", specifier = ">=1.2" },
     { name = "scikit-misc", specifier = ">=0.5.2" },
     { name = "scimorph", specifier = ">=1.0.3" },
-    { name = "scvi-tools", specifier = ">=1.3.3" },
-    { name = "scvi-tools", marker = "extra == 'analysis'", specifier = "==1.3.3" },
-    { name = "scvi-tools", marker = "extra == 'full'", specifier = "==1.3.3" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.0" },
     { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = ">=1.3" },
-    { name = "torch", specifier = ">=2.8.0" },
-    { name = "torch", marker = "extra == 'full'", specifier = "==2.8.0" },
-    { name = "torch", marker = "extra == 'gpu'", specifier = "==2.8.0" },
+    { name = "torch", specifier = ">=2.5.0" },
+    { name = "torch", marker = "extra == 'full'", specifier = ">=2.5.0" },
+    { name = "torch", marker = "extra == 'gpu'", specifier = ">=2.5.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "wandb", marker = "extra == 'analysis'", specifier = "==0.21.1" },
     { name = "wandb", marker = "extra == 'full'", specifier = "==0.21.1" },
 ]
 provides-extras = ["analysis", "cpu", "dev", "docs", "full", "gpu"]
-
-[[package]]
-name = "scglue"
-version = "0.4.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "anndata", version = "0.11.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "anndata", version = "0.12.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "dill" },
-    { name = "h5py" },
-    { name = "leidenalg" },
-    { name = "matplotlib" },
-    { name = "muon" },
-    { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "networkx", version = "3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "pandas" },
-    { name = "parse" },
-    { name = "pybedtools" },
-    { name = "pynvml" },
-    { name = "pyro-ppl" },
-    { name = "pytorch-ignite" },
-    { name = "scanpy" },
-    { name = "scikit-learn" },
-    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "scipy", version = "1.16.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "seaborn" },
-    { name = "sparse" },
-    { name = "statsmodels" },
-    { name = "tensorboardx" },
-    { name = "torch" },
-    { name = "tqdm" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/58/6c/ef3ec82a9c0d1ef7e08983fb194043b506a2d0e2a3ee6c93f6244417b93b/scglue-0.4.0.tar.gz", hash = "sha256:ac57432e030dd0d7460604c63d66b7a2a510cfe1ab8c9c67cc4aa3c4d5fdb021", size = 77223, upload-time = "2025-09-03T03:33:40.857Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/57/3b/729cb7feea34c7e24c64d3340f825e826e2c87401e1ca99f1126ed7b185f/scglue-0.4.0-py3-none-any.whl", hash = "sha256:9c3219b196a759b4c95d341e9d09d1694b3f83518b961d2769440205b5fa460a", size = 86676, upload-time = "2025-09-03T03:33:39.44Z" },
-]
 
 [[package]]
 name = "scib"
@@ -3348,44 +3300,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/82/31/006cbb4b648ba379a95c87262c2855cd0d09453e500937f78b30f02fa1cd/scipy-1.16.3-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:c5192722cffe15f9329a3948c4b1db789fbb1f05c97899187dcf009b283aea70", size = 38678975, upload-time = "2025-10-28T17:33:15.809Z" },
     { url = "https://files.pythonhosted.org/packages/c2/7f/acbd28c97e990b421af7d6d6cd416358c9c293fc958b8529e0bd5d2a2a19/scipy-1.16.3-cp312-cp312-win_amd64.whl", hash = "sha256:56edc65510d1331dae01ef9b658d428e33ed48b4f77b1d51caf479a0253f96dc", size = 38555926, upload-time = "2025-10-28T17:33:21.388Z" },
     { url = "https://files.pythonhosted.org/packages/ce/69/c5c7807fd007dad4f48e0a5f2153038dc96e8725d3345b9ee31b2b7bed46/scipy-1.16.3-cp312-cp312-win_arm64.whl", hash = "sha256:a8a26c78ef223d3e30920ef759e25625a0ecdd0d60e5a8818b7513c3e5384cf2", size = 25463014, upload-time = "2025-10-28T17:33:25.975Z" },
-]
-
-[[package]]
-name = "scvi-tools"
-version = "1.3.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "anndata", version = "0.11.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "anndata", version = "0.12.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "docrep" },
-    { name = "flax", version = "0.10.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "flax", version = "0.11.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "jax" },
-    { name = "jaxlib" },
-    { name = "lightning" },
-    { name = "ml-collections" },
-    { name = "mudata" },
-    { name = "numba" },
-    { name = "numpy" },
-    { name = "numpyro" },
-    { name = "optax" },
-    { name = "pandas" },
-    { name = "pyro-ppl" },
-    { name = "rich" },
-    { name = "scikit-learn" },
-    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "scipy", version = "1.16.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "sparse" },
-    { name = "tensorboard" },
-    { name = "torch" },
-    { name = "torchmetrics" },
-    { name = "tqdm" },
-    { name = "xarray", version = "2025.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "xarray", version = "2025.10.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/9c/16/ffd97b0fdecd3c43725f32968bd472aa46e1c049f7f4c0b598cf9aa18fdd/scvi_tools-1.3.3.tar.gz", hash = "sha256:03c9b8bfda537f07aa5171338ef2c8d39e5738f2643772dc36fbab7c01c6749d", size = 12426027, upload-time = "2025-07-23T13:33:29.312Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0a/57/139aa492ea4af16e7f784d10363820c83d6d4cfd3236e3c8fed1c7b3e262/scvi_tools-1.3.3-py3-none-any.whl", hash = "sha256:c8e53f0616e2e8192b9e42bd5d248eb0917de774dbcb73e3944fcb84bafe7c1e", size = 560617, upload-time = "2025-07-23T13:33:26.827Z" },
 ]
 
 [[package]]

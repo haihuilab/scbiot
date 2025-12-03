@@ -156,14 +156,25 @@ cython_debug/
 
 # End of https://www.toptal.com/developers/gitignore/api/python,jupyternotebooks
 examples/inputs/
-examples/inputs/
-examples/inputs/
-examples/inputs/
-examples/inputs/
-examples/inputs/
-examples/inputs/
-examples/inputs/
-examples/inputs/
-examples/inputs/
-examples/inputs/
-examples/inputs/
+
+# Bytecode / caches
+__pycache__/
+*.py[cod]
+
+# Virtual envs
+.venv/
+venv/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# IDE stuff
+.vscode/
+.idea/
+
+# Optional:
+.python-version
+uv.lock
+
