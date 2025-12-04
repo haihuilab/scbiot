@@ -27,25 +27,6 @@ Load the required packages and (optionally) the demo PBMC dataset from
       subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & pct_mt < 5
     )
 
-Preprocess and run PCA
-----------------------
-
-Standard log-normalisation, variable feature selection, scaling, and PCA:
-
-.. code-block:: r
-
-    alldata <- NormalizeData(
-        alldata,
-        normalization.method = "LogNormalize",
-        scale.factor = 10000
-      ) %>%
-      FindVariableFeatures(selection.method = "vst", nfeatures = 2000) %>%
-      ScaleData(
-        features = VariableFeatures(object = alldata),
-        vars.to.regress = c("nCount_RNA", "pct_mt")
-      ) %>%
-      RunPCA(npcs = 50)
-
 Convert to AnnData
 ------------------
 
@@ -74,10 +55,30 @@ and ``reticulate`` exposes the Python API:
       outFile = "ifnb.h5ad"
     )
 
-Run optimal transport + latent model
-------------------------------------
+Preprocess and run PCA with Scanpy
+----------------------------------
 
-Call the same helpers showcased in the notebooks, but through ``reticulate``:
+Once the data sit in AnnData, call the same Scanpy preprocessing helpers we
+use in the Python quick start:
+
+.. code-block:: r
+
+    sc$pp$highly_variable_genes(
+      adata,
+      n_top_genes = as.integer(2000),
+      flavor = "seurat_v3",
+      batch_key = "stim"
+    )
+    sc$pp$normalize_total(adata)
+    sc$pp$log1p(adata)
+    sc$pp$scale(adata)
+    sc$tl$pca(adata, n_comps = as.integer(50), use_highly_variable = TRUE)
+
+Run optimal transport + annotate neighbors
+------------------------------------------
+
+Call the OT integrator and reuse Scanpy for graph construction and Leiden
+clustering:
 
 .. code-block:: r
 
@@ -95,6 +96,33 @@ Call the same helpers showcased in the notebooks, but through ``reticulate``:
     sc$pp$neighbors(adata, use_rep = "X_ot")
     sc$tl$umap(adata)
     sc$tl$leiden(adata, resolution = 0.8, key_added = "leiden_X_ot")
+    adata
+
+Visualise OT embeddings inside Seurat
+-------------------------------------
+
+Mirror the OT UMAP coordinates inside the Seurat object for quick comparison:
+
+.. code-block:: r
+
+    ot <- as.matrix(adata$obsm["X_umap"])
+    rownames(ot) <- colnames(alldata)
+
+    alldata[["ot"]] <- CreateDimReducObject(
+      embeddings = ot,
+      key = "ot_umap_",
+      assay = DefaultAssay(alldata)
+    )
+
+    DimPlot(alldata, reduction = "ot", group.by = "stim", label = TRUE) +
+      ggtitle("Optimal Transport Integration")
+
+Train the scBIOT latent model
+-----------------------------
+
+With OT embeddings in place, configure ``scbiot`` and fit the Transformer VAE:
+
+.. code-block:: r
 
     scb$pp$setup_anndata(
       adata,
@@ -114,7 +142,7 @@ Bring the latent space back into Seurat
 .. code-block:: r
 
     latent <- model$get_latent_representation(
-      n_compoents = as.integer(50),
+      n_compoents = as.integer(30),
       svd_solver = "arpack",
       random_state = as.integer(42)
     )
@@ -130,7 +158,8 @@ Bring the latent space back into Seurat
 Visualise embeddings and markers
 --------------------------------
 
-Use the OT/latent embeddings in the usual Seurat plotting helpers:
+Use the latent representation just like any other Seurat reduction and then
+plot marker genes:
 
 .. code-block:: r
 
@@ -144,6 +173,8 @@ Use the OT/latent embeddings in the usual Seurat plotting helpers:
 
     DimPlot(alldata, reduction = "umap", group.by = "stim", label = TRUE) +
       ggtitle("scBIOT Integration")
+
+    alldata <- alldata %>% NormalizeData() %>% ScaleData()
 
     FeaturePlot(
       alldata,
