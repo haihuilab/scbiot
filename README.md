@@ -125,18 +125,4 @@ sc.tl.leiden(adata, resolution=0.8, key_added=f'leiden_{SCBIOT_LATENT_KEY}')
 
 ## API surface
 
-Refer to `examples/examples.py` for a runnable end-to-end notebook-friendly
-script, and the `tests/` folder to see terse usage patterns.
-
-## Development setup
-
-```bash
-git clone https://github.com/haihuilab/scbiot.git
-cd scbiot
-pip install -e .[dev,docs]
-pytest
-make -C docs html
-```
-
-We use Hatch for packaging; the version is stored in `src/scbiot/__about__.py`.
-See `CONTRIBUTING.md` (coming soon) for coding standards and contribution tips.
+Refer to `examples/` folder for a runnable end-to-end notebook-friendly script.

@@ -18,20 +18,20 @@ Highlights
 * Support both CPU and GPU.
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 3
    :caption: Get started
 
    installation
    usage
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 3
    :caption: Tutorials
 
    tutorials
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 3
    :caption: API reference
 
    api
