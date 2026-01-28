@@ -7,6 +7,8 @@ from .coembedding import (
     build_aligned_coembedding,
     harmonize_gene_names,
     label_transfer_shared_pca,
+    prepare_transfer_layers,
+    transfer_labels,
 )
 from .integrate import integrate_ot
 from .integrate_centroids import integrate_centroids
@@ -16,10 +18,14 @@ from ._presets import Preset, get_modality_preset as _get_modality_preset
 __all__ = [
     "integrate",
     "integrate_ot",
+    "integrate_spatial",
+    "integrate_spatial_ot",
     "integrate_centroids",    
     "integrate_paired",
     "build_aligned_coembedding",
     "label_transfer_shared_pca",
+    "prepare_transfer_layers",
+    "transfer_labels",
     "harmonize_gene_names",
     "assemble_joint_embedding",
 ]
@@ -43,7 +49,9 @@ def integrate(adata: Any, modality: str = "rna", **overrides: Any):
     on the selected modality (typically ``adata`` and a diagnostics dictionary).
     """
     params = {**_get_modality_preset(modality), **overrides}
-    if modality == 'paired':
+    mode = modality.lower()
+    if mode == 'paired':
         return integrate_paired(adata, **params)
-    else:
-         return integrate_ot(adata, **params)
+    if mode == 'spatial':
+        return integrate_spatial_ot(adata, **params)
+    return integrate_ot(adata, **params)

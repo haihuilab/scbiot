@@ -16,8 +16,11 @@ from .peaks import (
     annotate_gene_activity,
     harmonize_gene_names,
     knn_smooth_ga_on_atac,
-    ensure_csr_f32,
+    ensure_csr_f32,   
+    create_gene_activity 
 )
+
+
 from typing import Dict, TYPE_CHECKING
 
 if TYPE_CHECKING:  # only for type checkers to avoid import cycles at runtime
@@ -32,10 +35,15 @@ __all__ = [
     "remove_promoter_proximal_peaks",
     "find_variable_features",
     "add_iterative_lsi",
+    "create_gene_activity",
     "annotate_gene_activity",
     "harmonize_gene_names",
     "knn_smooth_ga_on_atac",
     "ensure_csr_f32",
+    "build_geo_ot",
+    "refine_domains",
+    "SPATIAL_GRID_KEY",
+    "SPATIAL_KNN_KEY",
     "setup_anndata",
     "preprocess_atac",
     "AtacPreprocessConfig",

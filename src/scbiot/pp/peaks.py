@@ -654,9 +654,9 @@ def annotate_gene_activity(
     counts = ensure_csr_f32(atac.layers["counts"] if "counts" in atac.layers else atac.X)
     ga_counts = counts @ peak_to_gene
 
-    adata_ga = AnnData(X=ga_counts, obs=atac.obs.copy(), var=pd.DataFrame(index=gene_index))
-    adata_ga.var["n_peaks"] = np.asarray(peak_to_gene.sum(axis=0)).ravel().astype(np.int32)
-    adata_ga.uns["provenance"] = {
+    adata_query = AnnData(X=ga_counts, obs=atac.obs.copy(), var=pd.DataFrame(index=gene_index))
+    adata_query.var["n_peaks"] = np.asarray(peak_to_gene.sum(axis=0)).ravel().astype(np.int32)
+    adata_query.uns["provenance"] = {
         "promoter_up": int(promoter_up),
         "promoter_down": int(promoter_down),
         "include_gene_body": bool(include_gene_body),
@@ -669,21 +669,21 @@ def annotate_gene_activity(
     }
     if verbose:
         print(f"[GA] Built GA with shape {ga_counts.shape} (cells × genes) from {var.shape[0]:,} peaks.")
-    return adata_ga
+    return adata_query
 
 
 def harmonize_gene_names(
-    adata_rna: AnnData,
+    adata_reference: AnnData,
     ad_ga: AnnData,
     *,
     rna_name_col: str = "gene_name",
     verbose: bool = True,
 ) -> None:
     """Match GA symbols to RNA casing; strip Ensembl-like .version suffixes."""
-    if rna_name_col in adata_rna.var:
-        rna_names = pd.Index([_clean_version(x) for x in adata_rna.var[rna_name_col].astype(str)])
+    if rna_name_col in adata_reference.var:
+        rna_names = pd.Index([_clean_version(x) for x in adata_reference.var[rna_name_col].astype(str)])
     else:
-        rna_names = pd.Index([_clean_version(x) for x in adata_rna.var_names.astype(str)])
+        rna_names = pd.Index([_clean_version(x) for x in adata_reference.var_names.astype(str)])
     ga_names = pd.Index([_clean_version(x) for x in ad_ga.var_names.astype(str)])
 
     rna_upper = rna_names.str.upper()
@@ -691,10 +691,10 @@ def harmonize_gene_names(
     case_map = dict(zip(rna_upper, rna_names))
     ad_ga.var_names = pd.Index([case_map.get(up, orig) for up, orig in zip(ga_upper, ad_ga.var_names)])
 
-    if "gene_name_orig" not in adata_rna.var:
-        adata_rna.var["gene_name_orig"] = adata_rna.var_names
-    adata_rna.var_names = rna_names
-    adata_rna.var_names_make_unique()
+    if "gene_name_orig" not in adata_reference.var:
+        adata_reference.var["gene_name_orig"] = adata_reference.var_names
+    adata_reference.var_names = rna_names
+    adata_reference.var_names_make_unique()
     ad_ga.var_names_make_unique()
 
     if verbose:
@@ -715,3 +715,114 @@ def knn_smooth_ga_on_atac(atac: AnnData, ad_ga: AnnData, *, n_neighbors: int = 5
     base = ensure_csr_f32(ad_ga.layers["ga"] if "ga" in ad_ga.layers else ad_ga.X)
     ad_ga.layers["ga_smooth"] = (W @ base).astype(np.float32)
     return ad_ga
+
+
+def create_gene_activity(
+    atac,
+    rna,
+    *,
+    gtf_file: str,
+
+    # promoter / TSS windowing
+    promoter_up: int = 2000,
+    promoter_down: int = 500,
+
+    # variable peak selection
+    batch_key: str = "batch",
+    top_peaks: int = 30_000,
+    var_features_key: str = "var_features",
+    normalize_var_features_output: bool = False,
+
+    # binarization
+    make_binary: bool = True,
+
+    # LSI
+    lsi_key: str = "X_lsi",
+    lsi_n_iter: int = 2,
+    lsi_components: int = 51,
+    drop_first_lsi_component: bool = True,
+    per_cluster_union: bool = False,
+    sample_cells_pre: Optional[int] = None,  # fit SVD on all cells by default
+
+    # gene-activity annotation
+    include_gene_body: bool = True,
+    weight_by_distance: bool = True,
+    tss_decay_bp: int = 2000,
+    promoter_priority: bool = True,
+    ga_layer: str = "ga",
+
+    # smoothing
+    knn_neighbors: int = 50,
+
+    # gene-name harmonization
+    rna_name_col: str = "gene_name",
+
+    # behavior
+    verbose: bool = True,
+    copy_atac: bool = False,
+):
+    """
+    Build gene-activity (GA) from ATAC peaks and harmonize GA gene names to RNA.
+
+    Notes
+    -----
+    - Side effect: writes LSI embedding to `atac.obsm[lsi_key]`.
+    - Set `copy_atac=True` if you don't want `atac` modified in-place.
+    """
+    atac_in = atac.copy() if copy_atac else atac
+
+    top = remove_promoter_proximal_peaks(
+        atac_in,
+        gtf_file=gtf_file,
+        promoter_up=promoter_up,
+        promoter_down=promoter_down,
+    )
+
+    top = find_variable_features(
+        top,
+        batch_key=batch_key,
+        topN=top_peaks,
+        add_key=var_features_key,
+        normalize_output=normalize_var_features_output,
+    )
+
+    counts = ensure_csr_f32(top.X)
+    if make_binary:
+        counts.data.fill(1.0)
+        counts.eliminate_zeros()
+    top.X = counts
+    top.layers["counts"] = counts
+
+    add_iterative_lsi(
+        top,
+        n_iter=lsi_n_iter,
+        per_cluster_union=per_cluster_union,
+        sample_cells_pre=sample_cells_pre,
+        n_components=lsi_components,
+        drop_first_component=drop_first_lsi_component,
+        add_key=lsi_key,
+    )
+    atac_in.obsm[lsi_key] = top.obsm[lsi_key]
+
+    ga = annotate_gene_activity(
+        atac_in,
+        gtf_file=gtf_file,
+        promoter_up=promoter_up,
+        promoter_down=promoter_down,
+        include_gene_body=include_gene_body,
+        weight_by_distance=weight_by_distance,
+        tss_decay_bp=tss_decay_bp,
+        promoter_priority=promoter_priority,
+        verbose=verbose,
+    )
+    ga.layers[ga_layer] = ensure_csr_f32(ga.X)
+
+    knn_smooth_ga_on_atac(
+        atac_in,
+        ga,
+        n_neighbors=knn_neighbors,
+    )
+
+    harmonize_gene_names(rna, ga, rna_name_col=rna_name_col, verbose=verbose)
+
+    return ga

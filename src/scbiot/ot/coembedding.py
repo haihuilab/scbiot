@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
+import warnings
 
 import numpy as np
 import ot
@@ -34,6 +35,7 @@ from ..ot.integrate_unpaired import (
     ot_label_transfer
     
 )
+from .integrate import integrate_ot
 
 
 __all__ = [
@@ -51,6 +53,8 @@ __all__ = [
     "find_variable_features",
     "harmonize_gene_names",
     "label_transfer_shared_pca",    
+    "prepare_transfer_layers",
+    "transfer_labels",
     "ot_label_transfer",
     "preprocess_atac",
     "remove_promoter_proximal_peaks",    
@@ -76,8 +80,8 @@ class CoEmbeddingConfig:
     ot_use_gpu: bool = True
     ot_gpu_device: int = 0
     ot_chunk_size: Optional[int] = 1024
-    rna_norm_layer: str = "rna_log1p"
-    ga_norm_layer: str = "ga_log1p"
+    ref_norm_layer: str = "rna_log1p"
+    query_norm_layer: str = "ga_log1p"
     batch_key: Optional[str] = "batch"
     rep_in: str = "X_pca_shared"
     rep_out: str = "X_pca_shared_aligned"
@@ -91,15 +95,15 @@ class CoEmbeddingResult:
 
     def concat_modalities(
         self,
-        adata_rna: AnnData,
-        adata_ga: AnnData,
+        adata_ref: AnnData,
+        adata_query: AnnData,
         *,
         label: str = "modality",
         **kwargs: Any,
     ) -> AnnData:
         params = dict(label=label, join="inner", merge="same")
         params.update(kwargs)
-        return sc.concat({"RNA": adata_rna, "ATAC_GA": adata_ga}, **params)
+        return sc.concat({"RNA": adata_ref, "ATAC_GA": adata_query}, **params)
 
 
 @dataclass
@@ -268,7 +272,7 @@ def preprocess_atac(
         lsi_kwargs=cfg.lsi_kwargs,
     )
 
-    adata_ga = annotate_gene_activity(
+    adata_query = annotate_gene_activity(
         adata_atac,
         gtf_file=gtf_file,
         promoter_up=cfg.ga_promoter_up,
@@ -279,14 +283,14 @@ def preprocess_atac(
         promoter_priority=cfg.ga_promoter_priority,
         verbose=verbose,
     )
-    adata_ga.layers["ga"] = ensure_csr_f32(adata_ga.X)
+    adata_query.layers["ga"] = ensure_csr_f32(adata_query.X)
 
     knn_smooth_ga_on_atac(
         adata_atac,
-        adata_ga,
+        adata_query,
         n_neighbors=cfg.knn_neighbors,
     )
-    return AtacPreprocessResult(atac=adata_atac, ga=adata_ga)
+    return AtacPreprocessResult(atac=adata_atac, ga=adata_query)
 
 
 # --------------------------------------------------------------------------- #
@@ -319,55 +323,137 @@ def normalize_log1p(adata: AnnData, layer_in: Optional[str], layer_out: str, tar
     }
 
 
+def prepare_transfer_layers(
+    adata_ref: AnnData,
+    adata_query: AnnData,
+    *,
+    ref_layer: str = "ref_log1p",
+    query_layer: str = "query_log1p",
+    target_sum: float = 1e4,
+) -> Tuple[str, str]:
+    sc.pp.normalize_total(adata_ref, target_sum=target_sum)
+    sc.pp.log1p(adata_ref)
+    adata_ref.layers[ref_layer] = ensure_csr_f32(adata_ref.X).copy()
+
+    sc.pp.normalize_total(adata_query, target_sum=target_sum)
+    sc.pp.log1p(adata_query)
+    adata_query.layers[query_layer] = ensure_csr_f32(adata_query.X).copy()
+
+    return ref_layer, query_layer
+
+
 def joint_hvgs(
-    adata_rna: AnnData,
-    adata_ga: AnnData,
+    adata_ref: AnnData,
+    adata_query: AnnData,
     *,
     n_top: int,
-    rna_norm: str,
-    ga_norm: str,
+    ref_norm: str,
+    query_norm: str,
     batch_key: Optional[str],
 ) -> pd.Index:
-    normalize_log1p(adata_rna, layer_in=None, layer_out=rna_norm)
-    ga_layer = "ga_smooth" if "ga_smooth" in adata_ga.layers else ("ga" if "ga" in adata_ga.layers else None)
-    normalize_log1p(adata_ga, layer_in=ga_layer, layer_out=ga_norm)
+    normalize_log1p(adata_ref, layer_in=None, layer_out=ref_norm)
+    ga_layer = "ga_smooth" if "ga_smooth" in adata_query.layers else ("ga" if "ga" in adata_query.layers else None)
+    normalize_log1p(adata_query, layer_in=ga_layer, layer_out=query_norm)
 
-    use_batch = batch_key if (batch_key and batch_key in adata_rna.obs.columns) else None
+    use_batch = batch_key if (batch_key and batch_key in adata_ref.obs.columns) else None
     sc.pp.highly_variable_genes(
-        adata_rna,
+        adata_ref,
         flavor="seurat_v3",
-        n_top_genes=min(n_top, adata_rna.n_vars),
-        layer=rna_norm,
+        n_top_genes=min(n_top, adata_ref.n_vars),
+        layer=ref_norm,
         batch_key=use_batch,
-        inplace=True,
     )
     sc.pp.highly_variable_genes(
-        adata_ga,
+        adata_query,
         flavor="seurat_v3",
-        n_top_genes=min(n_top, adata_ga.n_vars),
-        layer=ga_norm,
-        inplace=True,
+        n_top_genes=min(n_top, adata_query.n_vars),
+        layer=query_norm,
+        batch_key=None,
     )
-    rna_hv = set(adata_rna.var_names[adata_rna.var["highly_variable"].values])
-    ga_hv = set(adata_ga.var_names[adata_ga.var["highly_variable"].values])
-    shared = set(adata_rna.var_names).intersection(adata_ga.var_names)
-    genes = sorted(shared.intersection(rna_hv.union(ga_hv)))
+    ref_hv = set(adata_ref.var_names[adata_ref.var["highly_variable"].values])
+    query_hv = set(adata_query.var_names[adata_query.var["highly_variable"].values])
+    shared = set(adata_ref.var_names).intersection(adata_query.var_names)
+    genes = sorted(shared.intersection(ref_hv.union(query_hv)))
     if len(genes) < 500:
         raise ValueError("Too few shared HVGs; check name harmonization or GA quality.")
     return pd.Index(genes)
 
 
 def shared_pca_from_genes(
-    adata_rna: AnnData,
-    adata_ga: AnnData,
+    adata_ref: AnnData,
+    adata_query: AnnData,
     genes: Sequence[str],
     *,
     n_comps: int,
-    rna_norm: str,
-    ga_norm: str,
+    ref_norm: str,
+    query_norm: str,
 ) -> pd.Index:
-    Xr = ensure_csr_f32(adata_rna[:, genes].layers[rna_norm]).toarray()
-    Xg = ensure_csr_f32(adata_ga[:, genes].layers[ga_norm]).toarray()
+    normalize_log1p(adata_ref, layer_in=None, layer_out=ref_norm)
+    ga_layer = "ga_smooth" if "ga_smooth" in adata_query.layers else ("ga" if "ga" in adata_query.layers else None)
+    normalize_log1p(adata_query, layer_in=ga_layer, layer_out=query_norm)
+
+    genes_idx = pd.Index(genes)
+    if genes_idx.has_duplicates:
+        genes_idx = genes_idx.drop_duplicates()
+
+    def _first_pos(names: pd.Index) -> Dict[Any, int]:
+        pos: Dict[Any, int] = {}
+        for i, name in enumerate(names):
+            pos.setdefault(name, i)
+        return pos
+
+    rna_pos = _first_pos(adata_ref.var_names)
+    ga_pos = _first_pos(adata_query.var_names)
+    shared = [g for g in genes_idx if g in rna_pos and g in ga_pos]
+    if not shared:
+        raise ValueError("No shared genes found between RNA and GA inputs.")
+    if len(shared) < len(genes_idx):
+        warnings.warn(
+            "Some genes were missing in one modality or duplicated; using first occurrence only.",
+            RuntimeWarning,
+        )
+
+    rna_idx = np.array([rna_pos[g] for g in shared], dtype=np.int64)
+    ga_idx = np.array([ga_pos[g] for g in shared], dtype=np.int64)
+
+    Xr = ensure_csr_f32(adata_ref[:, rna_idx].layers[ref_norm]).toarray()
+    Xg = ensure_csr_f32(adata_query[:, ga_idx].layers[query_norm]).toarray()
+    shared = list(shared)
+
+    nonfinite_r = ~np.isfinite(Xr)
+    nonfinite_g = ~np.isfinite(Xg)
+    if nonfinite_r.any() or nonfinite_g.any():
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            mu_nf = np.nanmean(np.where(np.isfinite(Xr), Xr, np.nan), axis=0)
+        bad_gene = ~np.isfinite(mu_nf)
+        if bad_gene.any():
+            dropped = int(bad_gene.sum())
+            warnings.warn(
+                f"Dropping {dropped} shared genes with no finite RNA values.",
+                RuntimeWarning,
+            )
+            keep = ~bad_gene
+            Xr = Xr[:, keep]
+            Xg = Xg[:, keep]
+            rna_idx = rna_idx[keep]
+            ga_idx = ga_idx[keep]
+            shared = [g for g, k in zip(shared, keep) if k]
+            mu_nf = mu_nf[keep]
+            nonfinite_r = nonfinite_r[:, keep]
+            nonfinite_g = nonfinite_g[:, keep]
+        if not shared:
+            raise ValueError("No shared genes with finite RNA values after filtering.")
+        if nonfinite_r.any():
+            rows, cols = np.where(nonfinite_r)
+            Xr[rows, cols] = mu_nf[cols]
+        if nonfinite_g.any():
+            rows, cols = np.where(nonfinite_g)
+            Xg[rows, cols] = mu_nf[cols]
+        warnings.warn(
+            "Non-finite values found in shared RNA/GA layers; imputing with RNA means.",
+            RuntimeWarning,
+        )
 
     mu = Xr.mean(axis=0, dtype=np.float64)
     var = (Xr**2).mean(axis=0, dtype=np.float64) - mu**2
@@ -380,22 +466,21 @@ def shared_pca_from_genes(
     Zr = pca.fit_transform(Xr_z).astype(np.float32)
     Zg = pca.transform(Xg_z).astype(np.float32)
 
-    adata_rna.obsm["X_pca_shared"] = Zr
-    adata_ga.obsm["X_pca_shared"] = Zg
+    adata_ref.obsm["X_pca_shared"] = Zr
+    adata_query.obsm["X_pca_shared"] = Zg
 
     loadings = pca.components_.T.astype(np.float32, copy=False)
-    L_full = np.zeros((adata_rna.n_vars, loadings.shape[1]), np.float32)
-    idx = adata_rna.var_names.get_indexer(genes)
-    L_full[idx[idx >= 0]] = loadings
-    adata_rna.varm["PCs_shared"] = L_full
+    L_full = np.zeros((adata_ref.n_vars, loadings.shape[1]), np.float32)
+    L_full[rna_idx] = loadings
+    adata_ref.varm["PCs_shared"] = L_full
 
-    adata_rna.uns["shared_pca_meta"] = {
-        "genes_used": list(genes),
+    adata_ref.uns["shared_pca_meta"] = {
+        "genes_used": list(shared),
         "n_comps": int(loadings.shape[1]),
         "explained_variance_ratio": pca.explained_variance_ratio_.astype(np.float32).tolist(),
-        "norm_layers": {"rna": rna_norm, "ga": ga_norm},
+        "norm_layers": {"rna": ref_norm, "ga": query_norm},
     }
-    return pd.Index(genes)
+    return pd.Index(shared)
 
 
 def _compute_coral_alignment(Zr: np.ndarray, Zg: np.ndarray) -> np.ndarray:
@@ -441,8 +526,8 @@ def _to_torch(
 # Alignment & label transfer
 # --------------------------------------------------------------------------- #
 def align_shared_pca(
-    adata_rna: AnnData,
-    adata_ga: AnnData,
+    adata_ref: AnnData,
+    adata_query: AnnData,
     *,
     rep_in: str,
     rep_out: str,
@@ -458,7 +543,7 @@ def align_shared_pca(
     ot_chunk_size: Optional[int],
     verbose: bool,
 ) -> str:
-    Zr, Zg = adata_rna.obsm[rep_in], adata_ga.obsm[rep_in]
+    Zr, Zg = adata_ref.obsm[rep_in], adata_query.obsm[rep_in]
     if sp.issparse(Zr):
         Zr = Zr.toarray()
     if sp.issparse(Zg):
@@ -472,9 +557,9 @@ def align_shared_pca(
     Zg_coral = _compute_coral_alignment(Zr, Zg)
 
     if not use_ot:
-        adata_rna.obsm[rep_out] = Zr
-        adata_ga.obsm[rep_out] = Zg_coral.astype(np.float32, copy=False)
-        adata_ga.uns.pop("_ot_alignment", None)
+        adata_ref.obsm[rep_out] = Zr
+        adata_query.obsm[rep_out] = Zg_coral.astype(np.float32, copy=False)
+        adata_query.uns.pop("_ot_alignment", None)
         if verbose:
             print(f"[CORAL] '{rep_out}' updated using CORAL alignment only; OT skipped.")
         return rep_out
@@ -493,8 +578,8 @@ def align_shared_pca(
         chunk_size=ot_chunk_size,
     )
 
-    adata_rna.obsm[rep_out] = Zr
-    adata_ga.obsm[rep_out] = Zg_aligned.astype(np.float32, copy=False)
+    adata_ref.obsm[rep_out] = Zr
+    adata_query.obsm[rep_out] = Zg_aligned.astype(np.float32, copy=False)
 
     ot_meta: Dict[str, Any] = {
         "indices": transport["indices"].astype(np.int32, copy=False),
@@ -504,7 +589,7 @@ def align_shared_pca(
             if transport.get("residual") is not None
             else None
         ),
-        "rna_obs": np.asarray(adata_rna.obs_names, dtype=object),
+        "rna_obs": np.asarray(adata_ref.obs_names, dtype=object),
         "params": {
             "reg": float(ot_reg),
             "reg_m": float(ot_reg_m),
@@ -516,16 +601,16 @@ def align_shared_pca(
         "center": mu_r.astype(np.float32, copy=False),
         "scale": sd_r.astype(np.float32, copy=False),
     }
-    adata_ga.uns["_ot_alignment"] = ot_meta
+    adata_query.uns["_ot_alignment"] = ot_meta
 
     if verbose:
-        print(f"[OT] '{rep_out}' updated with GA→RNA barycentric OT (top-{ot_topk} transport stored).")
+        print(f"[OT] '{rep_out}' updated with query→reference barycentric OT (top-{ot_topk} transport stored).")
     return rep_out
 
 
 def label_transfer_shared_pca(
-    adata_rna: AnnData,
-    adata_ga: AnnData,
+    adata_ref: AnnData,
+    adata_query: AnnData,
     *,
     label_key: str,
     use_rep: str,
@@ -533,17 +618,17 @@ def label_transfer_shared_pca(
     metric: str = "cosine",
     min_conf: float,
 ) -> AnnData:
-    if label_key not in adata_rna.obs:
-        raise KeyError(f"{label_key!r} not found in adata_rna.obs")
-    if use_rep not in adata_rna.obsm or use_rep not in adata_ga.obsm:
+    if label_key not in adata_ref.obs:
+        raise KeyError(f"{label_key!r} not found in adata_ref.obs")
+    if use_rep not in adata_ref.obsm or use_rep not in adata_query.obsm:
         raise KeyError(f"{use_rep!r} missing in AnnData.obsm")
 
-    ot_meta = adata_ga.uns.get("_ot_alignment")
+    ot_meta = adata_query.uns.get("_ot_alignment")
     if ot_meta is None or "indices" not in ot_meta or "weights" not in ot_meta:
         raise RuntimeError("OT transport weights missing; run align_shared_pca with OT first.")
 
     rna_order = pd.Index(ot_meta["rna_obs"])
-    labels_series = adata_rna.obs[label_key].reindex(rna_order)
+    labels_series = adata_ref.obs[label_key].reindex(rna_order)
     if labels_series.isna().any():
         raise ValueError("Missing RNA labels after reindexing; ensure obs names align with OT metadata.")
 
@@ -560,18 +645,18 @@ def label_transfer_shared_pca(
         min_conf=min_conf,
     )
 
-    adata_ga.obs["pred_cell_type"] = res["pred_labels"]
-    adata_ga.obs["pred_confidence"] = res["confidence"]
-    adata_ga.obs["pred_support"] = res["support"]
-    adata_ga.obs["pred_unknown_prob"] = res["unknown_prob"]
-    adata_ga.obsm["pred_cell_type_proba"] = res["proba"]
-    adata_ga.uns["pred_cell_type_classes"] = list(res["classes"])
-    return adata_ga
+    adata_query.obs["pred_cell_type"] = res["pred_labels"]
+    adata_query.obs["pred_confidence"] = res["confidence"]
+    adata_query.obs["pred_support"] = res["support"]
+    adata_query.obs["pred_unknown_prob"] = res["unknown_prob"]
+    adata_query.obsm["pred_cell_type_proba"] = res["proba"]
+    adata_query.uns["pred_cell_type_classes"] = list(res["classes"])
+    return adata_query
 
 
 def build_aligned_coembedding(
-    adata_rna: AnnData,
-    adata_ga: AnnData,
+    adata_ref: AnnData,
+    adata_query: AnnData,
     *,
     config: Optional[CoEmbeddingConfig] = None,
     genes: Optional[Sequence[str]] = None,
@@ -580,27 +665,27 @@ def build_aligned_coembedding(
     cfg = config or CoEmbeddingConfig()
     if genes is None:
         genes_idx = joint_hvgs(
-            adata_rna,
-            adata_ga,
+            adata_ref,
+            adata_query,
             n_top=cfg.n_top_genes,
-            rna_norm=cfg.rna_norm_layer,
-            ga_norm=cfg.ga_norm_layer,
+            ref_norm=cfg.ref_norm_layer,
+            query_norm=cfg.query_norm_layer,
             batch_key=cfg.batch_key,
         )
     else:
         genes_idx = pd.Index(genes)
 
-    shared_pca_from_genes(
-        adata_rna,
-        adata_ga,
+    genes_idx = shared_pca_from_genes(
+        adata_ref,
+        adata_query,
         genes_idx,
         n_comps=cfg.n_components,
-        rna_norm=cfg.rna_norm_layer,
-        ga_norm=cfg.ga_norm_layer,
+        ref_norm=cfg.ref_norm_layer,
+        query_norm=cfg.query_norm_layer,
     )
     rep_key = align_shared_pca(
-        adata_rna,
-        adata_ga,
+        adata_ref,
+        adata_query,
         rep_in=cfg.rep_in,
         rep_out=cfg.rep_out,
         use_ot=cfg.use_optimal_transport,
@@ -616,3 +701,73 @@ def build_aligned_coembedding(
         verbose=verbose,
     )
     return CoEmbeddingResult(embedding_key=rep_key, genes=genes_idx, config=cfg)
+
+
+def transfer_labels(
+    adata_ref: AnnData,
+    adata_query: AnnData,
+    *,
+    ref_label_key: str,
+    query_label_key: str = "pred_cell_type",
+    pred_conf_key: str = "pred_confidence",
+    genes: Optional[Sequence[str] | str] = None,
+    min_conf: float = 0.25,
+    coembed_config: Optional[CoEmbeddingConfig] = None,
+    batch_key: str = "modality",
+    out_key: str = "X_pca_shared_aligned",
+    integrate_kwargs: Optional[Dict[str, Any]] = None,
+    verbose: bool = True,
+) -> Tuple[CoEmbeddingResult, AnnData, Dict[str, float | int]]:
+    """
+    Build an aligned RNA/ATAC co-embedding, transfer labels, and integrate jointly with scBIOT.
+    `ref_label_key` is read from the reference; predictions are stored on the query under
+    `query_label_key` (default: "pred_cell_type") with confidence in `pred_conf_key`.
+    """
+    cfg = replace(coembed_config) if coembed_config is not None else CoEmbeddingConfig()
+    ref_layer, query_layer = prepare_transfer_layers(adata_ref, adata_query)
+    cfg.ref_norm_layer = ref_layer
+    cfg.query_norm_layer = query_layer
+    if not cfg.use_optimal_transport:
+        raise ValueError("transfer_labels requires use_optimal_transport=True for OT label transfer.")
+
+    genes_resolved: Optional[Sequence[str]]
+    if isinstance(genes, str):
+        if genes.lower() != "shared":
+            raise ValueError("genes must be a sequence or the string 'shared'.")
+        genes_resolved = adata_ref.var_names.intersection(adata_query.var_names)
+        if len(genes_resolved) == 0:
+            raise ValueError("No shared genes between reference and query inputs.")
+        if verbose:
+            print(f"[coembed] shared genes={len(genes_resolved)}")
+    else:
+        genes_resolved = genes
+
+    coembed = build_aligned_coembedding(
+        adata_ref,
+        adata_query,
+        genes=genes_resolved,
+        config=cfg,
+        verbose=verbose,
+    )
+
+    label_transfer_shared_pca(
+        adata_ref,
+        adata_query,
+        label_key=ref_label_key,
+        use_rep=coembed.embedding_key,
+        min_conf=min_conf,
+    )
+    if query_label_key != "pred_cell_type" and query_label_key not in adata_query.obs:
+        adata_query.obs[query_label_key] = adata_query.obs["pred_cell_type"]
+    if pred_conf_key != "pred_confidence" and pred_conf_key not in adata_query.obs:
+        adata_query.obs[pred_conf_key] = adata_query.obs["pred_confidence"]
+
+    adata_joint = assemble_joint_embedding(
+        coembed.embedding_key,
+        {"Reference": adata_ref, "Query": adata_query},
+    )
+    if batch_key not in adata_joint.obs:
+        adata_joint.obs[batch_key] = adata_joint.obs["modality"]   
+
+    
+    return coembed, adata_joint
