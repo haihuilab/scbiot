@@ -126,7 +126,7 @@ sc.tl.leiden(adata, resolution=0.8, key_added=f'leiden_{SCBIOT_LATENT_KEY}')
 
 ## Example usage
 
-Refer to `https://scbiot.readthedocs.io/en/stable/` for more details.
-Refer to `examples/` folder for a runnable end-to-end notebook-friendly script.
+- Refer to [scbiot.readthedocs.io](https://scbiot.readthedocs.io/en/stable/) for more details.
+- Refer to `examples/` folder for a runnable end-to-end notebook-friendly script.
 
 
