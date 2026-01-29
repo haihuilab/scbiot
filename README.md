@@ -10,7 +10,7 @@ and concise APIs that work out of the box on AnnData data.
 
 - **Batteries-included preprocessing**: scATAC-seq peak processing, iterative LSI, and gene activity annotation.
 - **Accurate atlas integration**: high-fidelity alignment with rare cell-type protection.
-- **Unified scBIOT API**: a single class for embedding RNA, ATAC, transfer learning, and paired/unpaired multi-omics—fit once, reuse the pipeline for inference on new batches.
+- **Unified scBIOT framework**: a single framewrok for embedding RNA, ATAC, transfer learning, and paired/unpaired multi-omics—fit once, reuse the pipeline for inference on new batches.
 - **Fast integration via Optimal Transport (OT)** for scalable single-cell alignment.
 - **Transformer-VAE** enhanced integration for stronger representation learning and improved robustness.
 - **Scales to 100M cells** locally with memory-efficent processing.
