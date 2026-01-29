@@ -36,7 +36,7 @@ For an exact replica of our Conda dev environment use `pip install -r requiremen
 inside a fresh virtual environment.
 
 ## Quick start
-Documentation is published on [scbiot.readthedocs.io](https://scbiot.readthedocs.io/en/stable/)
+Detailed documentation is published on [scbiot.readthedocs.io](https://scbiot.readthedocs.io/en/stable/)
 and mirrors the examples below.
 
 ```python
