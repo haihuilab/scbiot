@@ -36,8 +36,9 @@ For an exact replica of our Conda dev environment use `pip install -r requiremen
 inside a fresh virtual environment.
 
 ## Quick start
-Detailed documentation is published on [scbiot.readthedocs.io](https://scbiot.readthedocs.io/en/stable/)
+- Detailed documentation is published on [scbiot.readthedocs.io](https://scbiot.readthedocs.io/en/stable/)
 and mirrors the examples below.
+- Refer to `examples/` folder for a runnable end-to-end notebook-friendly script.
 
 ```python
 import numpy as np
@@ -124,9 +125,6 @@ sc.tl.leiden(adata, resolution=0.8, key_added=f'leiden_{SCBIOT_LATENT_KEY}')
 
 ```
 
-## Example usage
 
-- Refer to [scbiot.readthedocs.io](https://scbiot.readthedocs.io/en/stable/) for more details.
-- Refer to `examples/` folder for a runnable end-to-end notebook-friendly script.
 
 
