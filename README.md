@@ -16,9 +16,6 @@ and concise APIs that work out of the box on AnnData data.
 - **Scales to 100M cells locally**: memory-efficent scalable processing.
 - **Label transfer**: across multi-omics modalities and between spatial data and scRNA-seq references.
 
-Documentation is published on [scbiot.readthedocs.io](https://scbiot.readthedocs.io/en/stable/)
-and mirrors the examples below.
-
 ## Installation
 
 ```bash
@@ -39,6 +36,8 @@ For an exact replica of our Conda dev environment use `pip install -r requiremen
 inside a fresh virtual environment.
 
 ## Quick start
+Documentation is published on [scbiot.readthedocs.io](https://scbiot.readthedocs.io/en/stable/)
+and mirrors the examples below.
 
 ```python
 import numpy as np
