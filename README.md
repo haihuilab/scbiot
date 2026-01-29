@@ -1,18 +1,19 @@
 # scBIOT
 
 **scBIOT** is a lightweight Python library for single-cell omics integration. 
-It bundles the preprocessing and embedding workflows we routinely apply to RNA, ATAC, 
+It bundles the preprocessing, embedding, transfer label workflows we routinely apply to RNA, ATAC, 
 and paired or unpaired multi-omics datasets. The library emphasizes reproducible data preparation, 
 single-cell clustering using embeddings derived from optimal transport and Transformer-based VAEs, 
 and concise APIs that work out of the box on AnnData data.
 
 ## Highlights
 
-- Batteries-included preprocessing: preprocessing of ATAC peaks, iterative LSI, and annotation of gene activity.
-- A unified `ScBIOT` class that can embed RNA, ATAC, paired or unpaired multi-omics
-  modalities and reuse the fitted pipeline for inference on new batches.
-- Fast single-cell integration with optimal transport.  
-- further enhanced single-cell integration with Transformer based VAE.
+- **Batteries-included preprocessing**: scATAC-seq peak processing, iterative LSI, and gene activity annotation.
+- **Accurate atlas integration**: high-fidelity alignment with rare cell-type protection.
+- **Unified scBIOT API**: a single class for embedding RNA, ATAC, transfer learning, and paired/unpaired multi-omics—fit once, reuse the pipeline for inference on new batches.
+- **Fast integration via Optimal Transport (OT)** for scalable single-cell alignment.
+- **Transformer-VAE** enhanced integration for stronger representation learning and improved robustness.
+- **Scales to 100M cells** locally with memory-efficent processing.
 
 Documentation is published on [scbiot.readthedocs.io](https://scbiot.readthedocs.io/en/stable/)
 and mirrors the examples below.
@@ -60,7 +61,7 @@ sc.pp.neighbors(adata, use_rep='X_ot')
 sc.tl.umap(adata)
 sc.tl.leiden(adata, resolution=0.8, key_added='leiden_X_ot')
 
-scb.pp.setup_anndata(adata, var_key='X_ot', batch_key='batch', pseudo_key='leiden_X_ot', true_key=None)
+scb.pp.setup_anndata(adata, var_key='X_ot', batch_key='batch', true_key=None)
 model = scb.models.vae(adata, verbose=True)
 model.train()
 
@@ -111,7 +112,7 @@ sc.tl.umap(adata)
 sc.tl.leiden(adata, resolution=0.02, key_added='leiden_X_ot')
 
 # Model training
-scb.pp.setup_anndata(adata, var_key='X_ot', batch_key='batchname_all', pseudo_key='leiden_X_ot', true_key=None)
+scb.pp.setup_anndata(adata, var_key='X_ot', batch_key='batchname_all', true_key=None)
 model = scb.models.vae(adata, prior_pcr=5., verbose=True)
 model.train()
 SCBIOT_LATENT_KEY = "scBIOT"
@@ -123,6 +124,9 @@ sc.tl.leiden(adata, resolution=0.8, key_added=f'leiden_{SCBIOT_LATENT_KEY}')
 
 ```
 
-## API surface
+## Example usage
 
+Refer to `https://scbiot.readthedocs.io/en/stable/` for more details.
 Refer to `examples/` folder for a runnable end-to-end notebook-friendly script.
+
+

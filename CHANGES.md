@@ -1,8 +1,10 @@
 
-v1.1.0 (18-Jan-2026)
+v1.1.4 (28-Jan-2026)
 ====================
 
-- Introduce OTViewIntegration function for processing unpaired multiomics.
+- Introduced ot.transfer_labels for cross-modality label transfer:
+    - scRNA-seq → ATAC gene activity (cell-type/state annotation)
+    - scRNA-seq → Xenium spatial (spot/cell label projection)
 
 
 v1.0.0 (11-Sep-2025)
