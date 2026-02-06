@@ -1,0 +1,13 @@
+{# Custom sidebar logo stack: project name, logo, version. #}
+{%- set index_doc = root_doc if root_doc is defined else master_doc -%}
+{%- set logo_url = logo or theme_logo -%}
+{%- set logo_alt = logo_alt if logo_alt is defined else project -%}
+<a class="sidebar-logo scbiot-sidebar-logo" href="{{ pathto(index_doc) }}">
+  <span class="scbiot-sidebar-title">{{ project }}</span>
+  {% if logo_url %}
+  <img class="scbiot-sidebar-mark" src="{{ pathto(logo_url, 1) }}" alt="{{ logo_alt }}" />
+  {% endif %}
+  {% if release %}
+  <span class="scbiot-sidebar-version">{{ release }}</span>
+  {% endif %}
+</a>

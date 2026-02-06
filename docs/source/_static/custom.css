@@ -114,3 +114,28 @@
         color: #adb2e5;
     }
 }
+
+.scbiot-sidebar-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    text-decoration: none;
+}
+
+.scbiot-sidebar-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--pst-color-text-base, #1f2937);
+}
+
+.scbiot-sidebar-mark {
+    width: 72px;
+    height: auto;
+}
+
+.scbiot-sidebar-version {
+    font-size: 0.85rem;
+    color: var(--pst-color-text-muted, #6b7280);
+}
