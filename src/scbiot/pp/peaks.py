@@ -764,6 +764,57 @@ def create_gene_activity(
     """
     Build gene-activity (GA) from ATAC peaks and harmonize GA gene names to RNA.
 
+    Parameters
+    ----------
+    atac:
+        ATAC AnnData with peak counts in ``.X`` and peak metadata in ``.var``.
+    rna:
+        RNA AnnData used to harmonize gene names for the GA output.
+    gtf_file:
+        Path to the GTF annotation used to map peaks to genes.
+    promoter_up / promoter_down:
+        TSS window (bp) used for promoter definition.
+    batch_key:
+        ``atac.obs`` column used when selecting variable peaks.
+    top_peaks:
+        Number of variable peaks to retain.
+    var_features_key:
+        Key to store variable peak annotations in ``.var``.
+    normalize_var_features_output:
+        Normalize peak scores produced by variable-feature selection.
+    make_binary:
+        Binarize peak counts before LSI.
+    lsi_key:
+        Key used to store the LSI embedding in ``atac.obsm``.
+    lsi_n_iter:
+        Number of LSI iterations during TF-IDF/LSI preprocessing.
+    lsi_components:
+        Number of LSI components to compute.
+    drop_first_lsi_component:
+        Drop the first LSI component (often depth-associated).
+    per_cluster_union:
+        Use a per-cluster union strategy for peak selection in LSI.
+    sample_cells_pre:
+        Fit the SVD on this many cells before projecting all cells.
+    include_gene_body:
+        Include gene-body peaks when computing gene activity.
+    weight_by_distance:
+        Weight peak contributions by distance to TSS.
+    tss_decay_bp:
+        Distance (bp) used for TSS-based decay weights.
+    promoter_priority:
+        Prefer promoter peaks when both promoter and gene-body peaks overlap.
+    ga_layer:
+        Name of the layer to store the GA matrix.
+    knn_neighbors:
+        Number of neighbors for KNN smoothing in ATAC space.
+    rna_name_col:
+        Column in ``rna.var`` with gene names (fallbacks to ``rna.var_names``).
+    verbose:
+        Emit progress logging when True.
+    copy_atac:
+        Copy ``atac`` before mutation (LSI embedding writes).
+
     Notes
     -----
     - Side effect: writes LSI embedding to `atac.obsm[lsi_key]`.

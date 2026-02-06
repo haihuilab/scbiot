@@ -9,7 +9,7 @@ from sklearn.preprocessing import LabelEncoder
 
 import ot  # POT used only if you set ot_backend="ot"
 
-from .integrate_backup import (
+from ..utils.ot_helpers import (
     _FAISS_AVAIL,
     _FAISS_GPU,
     _as_nd_f32_c,

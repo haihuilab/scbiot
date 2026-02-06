@@ -2,6 +2,33 @@
     margin: 1.75rem 0 2.5rem;
 }
 
+.scbiot-sidebar-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    text-align: center;
+    padding: 0.75rem 0.5rem;
+}
+
+.scbiot-sidebar-title {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--pst-color-text-base, #1f2430);
+}
+
+.scbiot-sidebar-mark {
+    width: 4rem;
+    height: auto;
+}
+
+.scbiot-sidebar-version {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--pst-color-text-muted, #6b7280);
+}
+
 .scbiot-search-form {
     display: flex;
     align-items: center;
@@ -113,29 +140,4 @@
     .scbiot-search-input::placeholder {
         color: #adb2e5;
     }
-}
-
-.scbiot-navbar-logo {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.35rem;
-    text-decoration: none;
-}
-
-.scbiot-navbar-title {
-    font-size: 1.05rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: var(--pst-color-text-base, #1f2937);
-}
-
-.scbiot-navbar-mark {
-    width: 72px;
-    height: auto;
-}
-
-.scbiot-navbar-version {
-    font-size: 0.85rem;
-    color: var(--pst-color-text-muted, #6b7280);
 }

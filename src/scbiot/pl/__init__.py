@@ -6,8 +6,10 @@ from .celltype_gene_mean_correlation import (
     celltype_gene_mean_correlation,
     celltype_predtype_mean_corr_heatmap,
 )
+from .anndata_confusion import plot_anndata_confusion
 
 __all__ = [
     "celltype_gene_mean_correlation",
     "celltype_predtype_mean_corr_heatmap",
+    "plot_anndata_confusion",
 ]

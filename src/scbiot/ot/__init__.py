@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional, Literal, Sequence
 from .integrate import integrate_ot
 from .integrate_centroids import integrate_centroids
+from .integrate_paired import integrate_paired
 
 from .supbiot import transfer_labels
 from ._presets import get_modality_preset as _get_modality_preset
@@ -161,9 +162,10 @@ def integrate(
     _args = {key: value for key, value in _args.items() if value is not _UNSET}
     params = {**_get_modality_preset(mode), **_args, **overrides}
 
-    if mode in ("paired"):
+    if mode == "paired":
         return integrate_paired(adata, **params)
 
+    params.pop("mode", None)
     return integrate_ot(adata, modality=mode, **params)
 
 
