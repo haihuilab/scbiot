@@ -129,7 +129,7 @@ representation:
 
     adata, metrics = scb.ot.integrate(
         adata,
-        modality="rna",
+        preset="rna",
         obsm_key="X_pca",
         batch_key="batch",
         out_key="X_ot",

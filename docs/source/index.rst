@@ -12,8 +12,8 @@ Highlights
 ----------
 
 * Fast optimal transport with GPU.
-* A unified `scBIOT` models that can embed RNA, ATAC, or paired multi-omics  modalities and reuse the fitted pipeline for inference on new batches.
-* Supports scRNA-seq, scATAC-seq, paired and unpaired multi-omics.
+* A unified `scBIOT` models that can embed RNA, ATAC, or multi-omics modalities and reuse the fitted pipeline for inference on new batches.
+* Supports scRNA-seq, scATAC-seq, and unpaired multi-omics.
 * Built-in preprocessing steps (iterative LSI).
 * Support both CPU and GPU.
 

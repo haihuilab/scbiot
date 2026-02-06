@@ -37,11 +37,28 @@ def assemble_joint_embedding(rep_key: str, modalities: Dict[str, AnnData]) -> An
     Z_all = np.vstack(embeddings)
     obs_all = pd.concat(obs_frames, axis=0, sort=False)
     first = adata_blocks[0]
-    if all(adata.var_names.equals(first.var_names) for adata in adata_blocks[1:]):
+    first_vars = first.var_names
+    if all(adata.var_names.equals(first_vars) for adata in adata_blocks[1:]):
         X_all = _stack_matrices([adata.X for adata in adata_blocks])
         ad_all = AnnData(X=X_all, var=first.var.copy())
     else:
-        ad_all = AnnData(X=np.zeros((Z_all.shape[0], 1), dtype=np.float32))
+        first_set = set(first_vars)
+        if all(set(adata.var_names) == first_set for adata in adata_blocks[1:]):
+            # Preserve full gene space when var_names match but are in different order.
+            X_all = _stack_matrices(
+                [(adata if adata.var_names.equals(first_vars) else adata[:, first_vars]).X for adata in adata_blocks]
+            )
+            ad_all = AnnData(X=X_all, var=first.var.copy())
+        else:
+            shared_set = set(first_vars)
+            for adata in adata_blocks[1:]:
+                shared_set &= set(adata.var_names)
+            if shared_set:
+                shared_vars = first_vars[first_vars.isin(shared_set)]
+                X_all = _stack_matrices([adata[:, shared_vars].X for adata in adata_blocks])
+                ad_all = AnnData(X=X_all, var=first.var.loc[shared_vars].copy())
+            else:
+                ad_all = AnnData(X=np.zeros((Z_all.shape[0], 1), dtype=np.float32))
     ad_all.obs = obs_all
     ad_all.obsm[rep_key] = Z_all
     return ad_all

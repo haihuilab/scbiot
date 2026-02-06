@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import warnings
 from typing import Any, Optional, Literal, Sequence
 from .integrate import integrate_ot
 from .integrate_centroids import integrate_centroids
-from .integrate_paired import integrate_paired
 
 from .supbiot import transfer_labels
 from ._presets import get_modality_preset as _get_modality_preset
@@ -11,19 +11,17 @@ from ._presets import get_modality_preset as _get_modality_preset
 __all__ = [
     "integrate",    
     "integrate_centroids",
-    "integrate_paired",
     "supbiot",
 ]
 
 _UNSET = object()  # Sentinel to detect which args were explicitly provided.
-
 
 def integrate(
     adata: Any,
     obsm_key: str = _UNSET,
     batch_key: str = _UNSET,
     out_key: str = _UNSET,
-    modality: Literal["rna", "atac", "supervised", "anchor", "paired"] = "rna",
+    preset: Literal["rna", "atac", "supervised", "anchor", "centroid", "spatial"] = _UNSET,
     K_ref: int = _UNSET,
     K_batch: int = _UNSET,
     reg: float = _UNSET,
@@ -56,6 +54,8 @@ def integrate(
     patience: int = _UNSET,
     tol: float = _UNSET,
     reference: str = _UNSET,  # supports "largest" or "union"
+    reference_category: Optional[str] = _UNSET,
+    reference_align: bool = _UNSET,
     label_key: Optional[str] = _UNSET,
     unlabeled_category: Any = _UNSET,
     postscale: bool = _UNSET,
@@ -65,6 +65,8 @@ def integrate(
     gpu_device: int = _UNSET,
     ot_backend: str = _UNSET,
     ot_mode: str = _UNSET,
+    approximate_ot: bool = False,
+    centroid_ot: bool = False,
     spatial_key: Optional[str] = _UNSET,
     spatial_weight: float = _UNSET,
     # ---- NEW: CORAL pre-alignment for disjoint datasets ----
@@ -91,9 +93,9 @@ def integrate(
         ``adata.obs`` column containing batch identities.
     out_key
         Destination key in ``adata.obsm`` for the corrected coordinates.
-    modality
+    preset
         Default settings used for integration of scRNA-seq ("rna"), supervised ("supervised"),
-        snATAC-seq ("atac"), multiomics ("anchor")
+        snATAC-seq ("atac"), spatial ("spatial"), multiomics ("anchor"), or centroid OT ("centroid").
     K_ref / K_batch
         Reference and batch-specific prototype sizes used for OT coupling.
     reg / reg_m
@@ -116,6 +118,12 @@ def integrate(
         Reference batch selection strategy (``"largest"`` or ``"union"``). When running
         in supervised mode with ``label_key`` provided, the method forces ``"union"``
         for stability.
+    reference_category
+        Alias for ``reference`` when you want to pass a batch label string (for example,
+        ``"reference"``). If provided, it overrides ``reference``.
+    reference_align
+        When True, align query cells directly to the reference group and keep the
+        reference fixed (reference/query alignment).
     label_key / unlabeled_category
         Optional semi-supervised label column and unlabeled marker used for supervised
         guidance and to compute OT transport metadata for label transfer. If omitted,
@@ -131,6 +139,12 @@ def integrate(
         to run unbalanced OT (default) or balanced OT for stronger batch mixing. When
         ``ot_mode='balanced'``, the algorithm automatically switches to the ``'union'``
         reference so every batch moves symmetrically.
+    approximate_ot
+        When True, use the approximate OT solver while keeping the selected preset's
+        hyper-parameters and data keys.
+    centroid_ot
+        When True, run centroid-level OT with FAISS interpolation (scales to very
+        large datasets).
     spatial_key
         Optional key in ``adata.obsm`` containing spatial coordinates. When provided,
         those coordinates are concatenated to ``obsm_key`` before OT.
@@ -157,14 +171,72 @@ def integrate(
     _args = dict(locals())
     _args.pop("adata")
     overrides = _args.pop("overrides")
+    approximate_ot = bool(_args.pop("approximate_ot"))
+    centroid_ot = bool(_args.pop("centroid_ot"))
 
-    mode = str(_args.pop("modality")).lower()
+    reference_category = _args.pop("reference_category")
+    reference_align = _args.pop("reference_align")
+    reference_category_set = reference_category is not _UNSET
+    if reference_category_set:
+        if _args.get("reference", _UNSET) is not _UNSET:
+            raise TypeError(
+                "integrate() got multiple values for 'reference' (reference_category also provided)"
+            )
+        _args["reference"] = reference_category
+
+    preset_value = _args.pop("preset")
+    if preset_value is _UNSET:
+        if "modality" in overrides:
+            preset_value = overrides.pop("modality")
+            warnings.warn(
+                "`modality` is deprecated; use `preset` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        else:
+            preset_value = "rna"
+    elif "modality" in overrides:
+        raise TypeError("integrate() got multiple values for 'preset' (old name 'modality' also provided)")
+
+    mode = str(preset_value).lower()
+    effective_centroid = centroid_ot or (mode == "centroid")
+    if effective_centroid and approximate_ot:
+        raise ValueError(
+            "integrate() received both approximate_ot and centroid_ot; enable only one."
+        )
     _args = {key: value for key, value in _args.items() if value is not _UNSET}
     params = {**_get_modality_preset(mode), **_args, **overrides}
+    if approximate_ot:
+        params["approximate_ot"] = True
+    if reference_align is not _UNSET:
+        params["reference_align"] = bool(reference_align)
+    elif reference_category_set and mode == "anchor":
+        params["reference_align"] = True
 
-    if mode == "paired":
-        return integrate_paired(adata, **params)
+    if params.get("reference_align") and mode == "anchor":
+        if "ot_mode" not in _args and "ot_mode" not in overrides:
+            params["ot_mode"] = "unbalanced"
+        if "postscale" not in _args and "postscale" not in overrides:
+            params["postscale"] = False
 
+    if effective_centroid:
+        centroid_defaults = _get_modality_preset("centroid")
+        centroid_keys = (
+            "n_centroids_per_batch",
+            "max_samples_per_batch",
+            "k_interp",
+            "chunk_size",
+            "use_gpu",
+            "gpu_device",
+            "tmp_path",
+        )
+        for key in centroid_keys:
+            if key not in _args and key not in overrides and key in centroid_defaults:
+                params[key] = centroid_defaults[key]
+    if effective_centroid:
+        params.pop("mode", None)
+        centroid_mode = None if mode == "centroid" else mode
+        return integrate_centroids(adata, modality=centroid_mode, **params)
     params.pop("mode", None)
     return integrate_ot(adata, modality=mode, **params)
 
@@ -172,6 +244,7 @@ def integrate(
 def supbiot(
     adata: Any,
     *,
+    use_rep: Optional[str] = None,
     label_key: str,
     unlabeled_category: str | Sequence[str] | set[str] = "unknown",
     pred_label_key: str = "pred_cell_type",
@@ -194,6 +267,8 @@ def supbiot(
     ----------
     adata
         AnnData object with reference and query cells plus OT metadata.
+    use_rep
+        Representation in ``adata.obsm`` used for label transfer (alias for ``out_key``).
     label_key
         Column in ``adata.obs`` with labels for reference cells.
     unlabeled_category
@@ -228,6 +303,10 @@ def supbiot(
     Any
         Updated ``adata`` (in place) or a joint AnnData when ``inplace=False``.
     """
+    if use_rep is not None:
+        if out_key is not None and use_rep != out_key:
+            raise ValueError("supbiot received both use_rep and out_key with different values.")
+        out_key = use_rep
     return transfer_labels(
         adata,
         label_key=label_key,

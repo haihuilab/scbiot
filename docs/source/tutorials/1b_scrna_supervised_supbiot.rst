@@ -84,7 +84,7 @@ Integrate with supervised OT (label-aware barycentric mapping and tuned transpor
 
     adata, metrics = scb.ot.integrate(
         adata,
-        modality="supervised",
+        preset="supervised",
         obsm_key="X_pca",
         batch_key="batch",
         out_key="X_ot",

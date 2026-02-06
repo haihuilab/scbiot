@@ -55,7 +55,7 @@ sc.pp.log1p(adata)
 sc.pp.scale(adata)
 sc.tl.pca(adata, n_comps=50, use_highly_variable=True)
 
-adata, metrics = scb.ot.integrate(adata, modality='rna', obsm_key='X_pca', batch_key='batch', out_key='X_ot')
+adata, metrics = scb.ot.integrate(adata, preset='rna', obsm_key='X_pca', batch_key='batch', out_key='X_ot')
 print(metrics)
 
 sc.pp.neighbors(adata, use_rep='X_ot')
@@ -73,6 +73,37 @@ sc.pp.neighbors(adata, use_rep=SCBIOT_LATENT_KEY)
 sc.tl.umap(adata)
 sc.tl.leiden(adata, resolution=0.8, key_added=f'leiden_{SCBIOT_LATENT_KEY}')
 
+```
+
+### Scaling options
+
+For ultra-large datasets, use centroid-level OT:
+
+```python
+adata, metrics = scb.ot.integrate(
+    adata,
+    preset="centroid",
+    obsm_key="X_pca",
+    batch_key="batch",
+    out_key="scBIOT",
+)
+```
+
+You can also enable centroid OT while keeping another preset's OT hyperparameters via
+`centroid_ot=True`.
+
+For a faster approximate OT run on large datasets, enable the approximate OT solver
+while keeping your preset's data keys:
+
+```python
+adata, metrics = scb.ot.integrate(
+    adata,
+    preset="atac",
+    obsm_key="X_lsi",
+    batch_key="batchname_all",
+    out_key="X_ot",
+    approximate_ot=True,
+)
 ```
 
 To process snATAC-seq dataset
@@ -98,7 +129,7 @@ adata.obsm["Unintegrated"] = adata_top.obsm["X_lsi"]
 # Optimal transport
 adata, metrics = scb.ot.integrate(
     adata,
-    modality='atac',
+    preset='atac',
     obsm_key="X_lsi",
     batch_key="batchname_all",
     out_key="X_ot",
@@ -124,7 +155,3 @@ sc.tl.umap(adata)
 sc.tl.leiden(adata, resolution=0.8, key_added=f'leiden_{SCBIOT_LATENT_KEY}')
 
 ```
-
-
-
-

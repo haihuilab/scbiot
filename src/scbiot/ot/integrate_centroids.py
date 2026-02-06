@@ -65,8 +65,9 @@ def integrate_centroids(
         If provided, the full integrated embedding is stored as a memmap file at this path
         to limit peak RAM usage. If None, a regular in-memory numpy array is used.
     modality
-        Optional modality preset ("rna", "supervised", or "atac") to initialize OT hyper-parameters.
-        Preset values can still be overridden by explicit keyword arguments.
+        Optional OT preset ("rna", "supervised", "atac", or "anchor") to initialize OT
+        hyper-parameters. Use ``"centroid"`` to keep centroid defaults while relying on
+        explicit OT keyword arguments.
     **integrate_kwargs
         Forwarded directly to `integrate_ot` (e.g. reg, reg_m, reference, true_label_key, etc.).
 
@@ -78,9 +79,15 @@ def integrate_centroids(
         Metrics dictionary returned by `integrate_ot`, augmented with `n_centroids`.
     """
     if modality is not None:
-        if modality.lower() == "paired":
-            raise ValueError("integrate_centroids supports single-modality presets (rna, supervised, atac).")
-        preset_kwargs = dict(get_modality_preset(modality))
+        modality_norm = str(modality).lower()
+        if modality_norm == "paired":
+            raise ValueError(
+                "integrate_centroids supports presets rna, supervised, atac, or anchor (paired not supported)."
+            )
+        if modality_norm == "centroid":
+            preset_kwargs = {}
+        else:
+            preset_kwargs = dict(get_modality_preset(modality_norm))
     else:
         preset_kwargs = {}
     ot_kwargs: Dict[str, Any] = {**preset_kwargs, **integrate_kwargs}

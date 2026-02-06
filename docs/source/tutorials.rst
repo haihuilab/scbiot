@@ -22,7 +22,6 @@ repository root:
    tutorials/1_scrna_seq
    tutorials/2_scrna_seq_r
    tutorials/3_scatac_seq
-   tutorials/4_paired_multiomics
    tutorials/5_unpaired_multiomics
    tutorials/6_integrate_centroid_level
    tutorials/7_brain_1.3M_integration

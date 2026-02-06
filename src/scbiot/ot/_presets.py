@@ -40,6 +40,9 @@ _MODALITY_PRESETS: Dict[str, Preset] = {
         "use_gpu": True,
         "ot_backend": "torch",
         "verbose": True,
+        # approximate ot and centroid ot
+        "approximate_ot": False,
+        "approximate_ot": False,
     },
     # Default settings used for supervised integration
     "supervised": {
@@ -85,7 +88,10 @@ _MODALITY_PRESETS: Dict[str, Preset] = {
         "unlabeled_category": 'Unknown',
         # Supervised
         "lam_sup": 0.60,
-        "lam_repulse": 0.18
+        "lam_repulse": 0.18,
+        # approximate ot and centroid ot
+        "approximate_ot": False,
+        "approximate_ot": False,
     },
     "spatial": {
         "obsm_key": "X_pca",
@@ -114,6 +120,9 @@ _MODALITY_PRESETS: Dict[str, Preset] = {
         "bayes_min_posterior_weight": 0.15,
         "bayes_adaptive_precision": True,
         "verbose": True,
+        # approximate ot and centroid ot
+        "approximate_ot": False,
+        "approximate_ot": False,
     },
     # Default settings used for integration of ATAC-seq
     "atac": {
@@ -148,41 +157,9 @@ _MODALITY_PRESETS: Dict[str, Preset] = {
         "use_gpu": True,
         "ot_backend": "torch",
         "verbose": True,
-    },
-    "paired": {
-        "obsm_key": "X_pca",
-        "batch_key": "batch",
-        "out_key": "scBIOT_OT",
-        "mode": "ufgw_barycenter",
-        "view_keys": ("X_pca", "X_lsi"),
-        "reference": "union",
-        "K_ref": 960,
-        "K_batch": 360,
-        "reg": 0.034,
-        "reg_m": 0.28,
-        "sharpen": 0.10,
-        "K_pseudo": 20,
-        "pull": 0.72,
-        "push": 0.24,
-        "lambda0_hi": 0.56,
-        "lambda0_lo": 0.44,
-        "smin_bulk": 0.80,
-        "smax_bulk": 1.55,
-        "smin_bridge": 0.92,
-        "smax_bridge": 1.14,
-        "max_step_local": 0.92,
-        "step_lo": 0.70,
-        "step_hi": 0.88,
-        "q_start": 0.78,
-        "q_end": 0.88,
-        "overlap0_lo": 0.64,
-        "overlap0_hi": 0.74,
-        "w_overlap": 0.14,
-        "w_strain": 1.1,
-        "penalty_gamma": 1.6,
-        "use_gpu": True,
-        "ot_backend": "torch",
-        "verbose": True,
+        # approximate ot and centroid ot
+        "approximate_ot": False,
+        "approximate_ot": False,
     },
     # Default settings used for integration of cross-modalities/multiomics/disjoint datasets
     "anchor": {
@@ -228,8 +205,21 @@ _MODALITY_PRESETS: Dict[str, Preset] = {
         "unlabeled_category": 'Unknown',
         # Supervised
         "lam_sup": 0.60,
-        "lam_repulse": 0.18
-    }
+        "lam_repulse": 0.18,
+        # approximate ot and centroid ot
+        "approximate_ot": True,
+        "approximate_ot": False,
+    },
+    # Default settings used for centroid-level OT (ultra-large datasets)
+    "centroid": {
+        "n_centroids_per_batch": 2048,
+        "max_samples_per_batch": 500_000,
+        "k_interp": 8,
+        "chunk_size": 500_000,
+        "use_gpu": True,
+        "gpu_device": 0,
+        "tmp_path": None,
+    },
 }
 
 

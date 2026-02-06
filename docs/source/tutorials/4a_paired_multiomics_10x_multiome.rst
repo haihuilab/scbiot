@@ -62,7 +62,7 @@ Integrate paired modalities with barycentric OT (RNA PCA + ATAC LSI), then train
 
     adata, metrics = scb.ot.integrate(
         adata,
-        modality="paired",
+        preset="paired",
         obsm_key="X_pca",          # geometry / smoothing base view
         batch_key="batch",
         out_key="X_ot",

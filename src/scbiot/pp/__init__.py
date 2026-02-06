@@ -23,6 +23,7 @@ from .peaks import (
     ensure_csr_f32,
     create_gene_activity,
 )
+from .coembedding import coembed_pca
 
 if TYPE_CHECKING:
     from anndata import AnnData
@@ -37,6 +38,7 @@ __all__ = [
     "harmonize_gene_names",
     "knn_smooth_ga_on_atac",
     "ensure_csr_f32",
+    "coembed_pca",
     "build_geo_ot",
     "refine_domains",
     "SPATIAL_GRID_KEY",

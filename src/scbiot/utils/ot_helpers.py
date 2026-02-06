@@ -9,6 +9,7 @@ from sklearn.metrics import pairwise_distances, pairwise_distances_argmin
 from sklearn.manifold import trustworthiness
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import LabelEncoder
+from .torch_utils import _sinkhorn_uot_torch, _to_torch, _torch_device
 try:  # POT (only used if you flip ot_backend="pot", otherwise unused)
     import ot  # type: ignore
     _POT_AVAILABLE = True
@@ -52,6 +53,53 @@ def _as_nd_f32_c(a: np.ndarray) -> np.ndarray:
     return a
 
 
+def _resolve_reference_query_masks(
+    adata: Any,
+    *,
+    batch_key: str,
+    label_key: Optional[str],
+    unlabeled_category: Any,
+    reference: str,
+) -> Tuple[np.ndarray, np.ndarray]:
+    if label_key is not None and label_key in adata.obs:
+        labels = adata.obs[label_key]
+        if unlabeled_category is None:
+            query_mask = labels.isna()
+        elif isinstance(unlabeled_category, (list, tuple, set)):
+            query_mask = labels.isna() | labels.isin(unlabeled_category)
+        else:
+            query_mask = labels.isna() | labels.eq(unlabeled_category)
+        ref_mask = ~query_mask
+        if int(query_mask.sum()) == 0 or int(ref_mask.sum()) == 0:
+            raise ValueError("Reference/query subset empty; check label_key/unlabeled_category.")
+        return np.asarray(ref_mask), np.asarray(query_mask)
+
+    if batch_key not in adata.obs:
+        raise KeyError(f"Neither label_key nor batch_key='{batch_key}' found in adata.obs.")
+
+    batches = adata.obs[batch_key].astype(str)
+    unique = set(batches.unique())
+    label_map = {str(label).lower(): str(label) for label in unique}
+    ref_label: Optional[str] = None
+    ref_pref = str(reference).lower()
+    if ref_pref in label_map:
+        ref_label = label_map[ref_pref]
+    elif "reference" in label_map:
+        ref_label = label_map["reference"]
+    elif "rna" in label_map:
+        ref_label = label_map["rna"]
+    elif "largest" in ref_pref or ref_pref == "auto":
+        ref_label = batches.value_counts().idxmax()
+    else:
+        ref_label = batches.value_counts().idxmax()
+
+    ref_mask = batches.eq(ref_label)
+    query_mask = ~ref_mask
+    if int(query_mask.sum()) == 0 or int(ref_mask.sum()) == 0:
+        raise ValueError("Reference/query subset empty; check batch_key and reference.")
+    return np.asarray(ref_mask), np.asarray(query_mask)
+
+
 def _faiss_ready(a: np.ndarray) -> np.ndarray:
     return _as_nd_f32_c(a)
 
@@ -78,59 +126,6 @@ def _faiss_knn_search(
     index.add(xb)
     D2, I = index.search(xq, k)
     return D2, I
-
-
-def _torch_device(use_gpu: bool, gpu_device: int) -> torch.device:
-    if use_gpu and torch.cuda.is_available():
-        return torch.device(f"cuda:{gpu_device}")
-    return torch.device("cpu")
-
-
-def _to_torch(
-    x: np.ndarray,
-    device: torch.device,
-    dtype: torch.dtype = torch.float32,
-) -> torch.Tensor:
-    if isinstance(x, torch.Tensor):
-        return x.to(device=device, dtype=dtype).contiguous()
-    try:
-        return torch.as_tensor(x, device=device, dtype=dtype).contiguous()
-    except TypeError:  # older torch without device kwarg
-        return torch.as_tensor(x, dtype=dtype).to(device=device).contiguous()
-
-
-# -------------------- Unbalanced Sinkhorn (Torch) --------------------
-@torch.no_grad()
-def _sinkhorn_uot_torch(
-    M: torch.Tensor,
-    a: torch.Tensor,
-    b: torch.Tensor,
-    eps: float = 0.05,
-    tau: float = 0.5,
-    iters: int = 1000,
-    tol: float = 1e-6,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    dtype = M.dtype
-    tiny = torch.finfo(dtype).eps
-    K = torch.exp(-M / eps)
-    v = torch.ones_like(b)
-    u = torch.ones_like(a)
-
-    for _ in range(iters):
-        Kv = torch.matmul(K, v).clamp_min(tiny)
-        u_new = torch.pow(a / Kv, tau)
-
-        KTu = torch.matmul(K.T, u_new).clamp_min(tiny)
-        v_new = torch.pow(b / KTu, tau)
-
-        if (
-            torch.max(torch.abs(torch.log(u_new) - torch.log(u))) < tol
-            and torch.max(torch.abs(torch.log(v_new) - torch.log(v))) < tol
-        ):
-            u, v = u_new, v_new
-            break
-        u, v = u_new, v_new
-    return u, v, K
 
 
 @torch.no_grad()

@@ -14,8 +14,7 @@ Transformer VAE. These mirror what you see in the tutorials.
 
 **Optimal transport**
 - `ot.integrate`
-- `ot.build_aligned_coembedding`
-- `ot.label_transfer_shared_pca`
+- `pp.coembed_pca`
 
 
 See the tutorial pages for code snippets that call each function.

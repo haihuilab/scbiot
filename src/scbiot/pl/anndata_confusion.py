@@ -58,7 +58,7 @@ def plot_anndata_confusion(
         "all"  => all entries sum to 1.
         "none" => raw counts.
     figsize : (w, h)
-        Figure size.
+        Figure size for the heatmap panel; when annotate_mapping is True, extra height is added.
     cmap : str
         Colormap name.
     linewidths, linecolor : float, str
@@ -93,7 +93,10 @@ def plot_anndata_confusion(
     from matplotlib.gridspec import GridSpec
 
     # Extract and clean
-    df = adata.obs[[true_key, pred_key, ok_order_key]].copy()
+    cols = [true_key, pred_key]
+    if ok_order_key not in cols:
+        cols.append(ok_order_key)
+    df = adata.obs[cols].copy()
     if dropna:
         df = df.dropna(subset=[true_key, pred_key])
 
@@ -149,11 +152,26 @@ def plot_anndata_confusion(
 
     # Plot layout
     if annotate_mapping:
-        fig = plt.figure(figsize=figsize, constrained_layout=True)
-        gs = GridSpec(nrows=1, ncols=3, figure=fig, width_ratios=[1.0, 0.05, 1.05])
-        ax = fig.add_subplot(gs[0])
-        cax = fig.add_subplot(gs[1])
-        lax = fig.add_subplot(gs[2])
+        max_labels = max(len(norm_df.index), len(norm_df.columns))
+        map_rows = max_labels + 1
+        line_height = (mapping_fontsize / 72.0) * 1.35
+        mapping_height = max(0.6, line_height * map_rows)
+        heatmap_height = figsize[1]
+        # Add vertical space for the mapping legend so the heatmap keeps its size.
+        fig = plt.figure(
+            figsize=(figsize[0], heatmap_height + mapping_height),
+            constrained_layout=True,
+        )
+        gs = GridSpec(
+            nrows=2,
+            ncols=2,
+            figure=fig,
+            height_ratios=[heatmap_height, mapping_height],
+            width_ratios=[1.0, 0.05],
+        )
+        ax = fig.add_subplot(gs[0, 0])
+        cax = fig.add_subplot(gs[0, 1])
+        lax = fig.add_subplot(gs[1, :])
         lax.axis("off")
     else:
         fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
@@ -186,18 +204,27 @@ def plot_anndata_confusion(
 
         map_y = [f"{i} -> {name}" for i, name in enumerate(norm_df.index)]
         map_x = [f"{i} -> {name}" for i, name in enumerate(norm_df.columns)]
-        legend_text = (
-            "Y / Predicted cell types:\n" + "\n".join(map_y) + "\n\n"
-            + "X / Ground truth cell types:\n" + "\n".join(map_x)
-        )
+        pred_text = "Predicted cell types (Y):\n" + "\n".join(map_y)
+        true_text = "Ground truth cell types (X):\n" + "\n".join(map_x)
         lax.text(
             0.0,
             1.0,
-            legend_text,
+            pred_text,
             va="top",
             ha="left",
             fontsize=mapping_fontsize,
             family="monospace",
+            transform=lax.transAxes,
+        )
+        lax.text(
+            0.52,
+            1.0,
+            true_text,
+            va="top",
+            ha="left",
+            fontsize=mapping_fontsize,
+            family="monospace",
+            transform=lax.transAxes,
         )
     else:
         ax.set_yticklabels(norm_df.index, rotation=0, fontsize=tick_fontsize)

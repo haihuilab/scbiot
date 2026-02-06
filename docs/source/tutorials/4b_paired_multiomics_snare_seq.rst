@@ -81,7 +81,7 @@ Integrate paired RNA+ATAC views with OT, then train and export the latent space:
 
     adata, metrics = scb.ot.integrate(
         adata,
-        modality="paired",
+        preset="paired",
         obsm_key="X_pca",          # base view for geometry/smoothing
         batch_key="batch",
         out_key="X_ot",

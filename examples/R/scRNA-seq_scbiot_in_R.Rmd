@@ -63,7 +63,7 @@ sc$tl$pca(adata, n_comps = as.integer(50), use_highly_variable = TRUE)
 
 Run optimal transport
 ```{r}
-res <-  scb$ot$integrate(adata, modality='rna', obsm_key='X_pca', batch_key='stim', out_key='X_ot',
+res <-  scb$ot$integrate(adata, preset='rna', obsm_key='X_pca', batch_key='stim', out_key='X_ot',
                          ot_mode='balanced',  
                         
                          )

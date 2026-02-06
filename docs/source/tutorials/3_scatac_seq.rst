@@ -48,7 +48,7 @@ Run OT integration on LSI space, then train the VAE and store the embedding:
 
     adata, metrics = scb.ot.integrate(
         adata,
-        modality="atac",
+        preset="atac",
         obsm_key="X_lsi",
         batch_key="batchname_all",
         out_key="X_ot",
