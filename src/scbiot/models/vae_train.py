@@ -1,13 +1,19 @@
-import os, math, time, warnings
+from __future__ import annotations
+
+import math
+import os
+import time
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from numpy.typing import NDArray
 from torch.utils.data import Dataset, DataLoader
 
 from tqdm import tqdm
@@ -18,8 +24,12 @@ warnings.filterwarnings('ignore')
 
 from .vae import Model_VAE, Encoder_model, Decoder_model
 from ..utils.adata_loader import build_loaders_from_adata
-from ..pp.setup_anndata import get_anndata_setup
+from ..pp.setup_anndata import AnnDataLike, get_anndata_setup
 from ..utils.train_utils import (
+    _codes_from_obs,
+    _ensure_tensor,
+    _split_by_idx,
+    SCDataset2View,
     assign_soft_cluster,
     get_cosine_schedule_with_warmup, 
     norm_batch, 
@@ -28,13 +38,6 @@ from ..utils.train_utils import (
     UniformLabelSampler, 
     set_seed, 
     calculate_metrics
-)
-from ..utils.helpers import (
-    _codes_from_obs, 
-    _split_by_idx, 
-    SCDataset2View,
-    _ensure_tensor
-    
 )
 from ..utils.losses import (
     ProtoHead, 
@@ -62,7 +65,7 @@ BATCH_SIZE = 8192
 NUM_EPOCHS = 80
 
 
-def _resolve_device(device: Optional[str]) -> str:
+def _resolve_device(device: str | None) -> str:
     if device:
         return device
     if torch.cuda.is_available():
@@ -90,31 +93,31 @@ class HyperParams:
 class VAEModel:
     def __init__(
         self,
-        adata,
-        num_layers: Optional[int] = NUM_LAYERS,
+        adata: AnnDataLike,
+        num_layers: int | None = NUM_LAYERS,
         # d_numerical: Optional[int] = None,
-        categories: Optional[Sequence[int]] = None,
-        d_token: Optional[int] = D_TOKEN,
+        categories: Sequence[int] | None = None,
+        d_token: int | None = D_TOKEN,
         *,
         n_head: int = N_HEAD,
         factor: int = FACTOR,
         bias: bool = True,
-        var_key: Optional[str] = None,
-        batch_key: Optional[str] = None,
-        pseudo_key: Optional[str] = None,
-        true_key: Optional[str] = None,
+        var_key: str | None = None,
+        batch_key: str | None = None,
+        pseudo_key: str | None = None,
+        true_key: str | None = None,
         threshold: float = 0.1,
         num_clusters: int = 64,
         random_seed: int = 42,
-        training_steps: Optional[int] = None,
-        device: Optional[str] = None,
+        training_steps: int | None = None,
+        device: str | None = None,
         batch_size: int = BATCH_SIZE,
         lr: float = LR,
         num_epochs: int = NUM_EPOCHS,
-        hyperparams: Optional[HyperParams] = None,
+        hyperparams: HyperParams | None = None,
         prior_pcr: float = 1.0,
         verbose: bool = False,
-    ):
+    ) -> None:
         self.adata = adata
         self.num_layers = num_layers or NUM_LAYERS
         self.d_token = d_token or D_TOKEN
@@ -157,7 +160,7 @@ class VAEModel:
         os.makedirs(self.ckpt_dir, exist_ok=True)
         self.model_save_path = f'{self.ckpt_dir}/model.pt'
         self.encoder_save_path = f'{self.ckpt_dir}/encoder.pt'
-        self._latents_cache: Optional[torch.Tensor] = None
+        self._latents_cache: torch.Tensor | None = None
 
         registry = get_anndata_setup(adata)
         self.var_key = var_key or registry.get("var_key") or "scBIOT_OT"
@@ -306,13 +309,14 @@ class VAEModel:
         self.train_acc = AverageMeter(); self.train_ari = AverageMeter()
         self.train_nmi = AverageMeter(); self.train_kbet = AverageMeter()
         self.best_nmi = 0.0
+        self.best_loss = float("inf")
 
         # logs
         self.train_prob = pd.DataFrame()
         self.test_prob = pd.DataFrame()
 
         # prototypes created lazily
-        self.proto_head: Optional[ProtoHead] = None
+        self.proto_head: ProtoHead | None = None
 
         # Debug summary so we *know* which labels exist and their sizes.
         if self.verbose:
@@ -328,7 +332,7 @@ class VAEModel:
         return z.view(z.size(0), -1) if z.dim() == 3 else z #z.mean(1)#
     
 
-    def train(self):
+    def train(self) -> None:
         self._latents_cache = None
         epoch_bar = tqdm(total=self.num_epochs, desc="Training", leave=True)
         for epoch in range(self.num_epochs + 1):
@@ -412,18 +416,19 @@ class VAEModel:
                     )
 
                     # ----- metrics (EXPLICITLY uses batch + true labels) -----
-                    targets = true_lab if self.has_true else pseudo_lab
                     valid = pseudo_lab[pseudo_lab >= 0]
                     num_clusters = int(valid.unique().numel()) if valid.numel() else self.num_clusters
+                    metrics_enabled = self.has_pseudo and valid.numel() > 0
+                    metrics_labels = valid if metrics_enabled else None
 
                     mask_ratio, acc, ari, nmi, kbet, soft_prob = calculate_metrics(
                         batch_labels=batch_lab,
-                        true_labels=valid,         # None if not available
+                        true_labels=metrics_labels,         # None if not available
                         batch_z1=z1,
                         batch_z2=z2,
                         threshold=self.threshold,
                         num_clusters=num_clusters,
-                        metrics=True
+                        metrics=metrics_enabled
                     )
 
                     total_loss = loss1 + loss2 + proto_loss #+ 0.1*reg1 + 0.1*reg2
@@ -438,8 +443,10 @@ class VAEModel:
 
                 # meters
                 self.losses.update(float(total_loss))
-                self.train_acc.update(acc); self.train_ari.update(ari)
-                self.train_nmi.update(nmi); self.train_kbet.update(kbet)
+                if metrics_enabled:
+                    self.train_acc.update(acc); self.train_ari.update(ari)
+                    self.train_nmi.update(nmi)
+                self.train_kbet.update(kbet)
 
                 sp = soft_prob.detach().cpu().numpy()
                 # Standardize to 2D (B, K)
@@ -448,12 +455,6 @@ class VAEModel:
                 elif sp.ndim == 1:            # (B,) -> (B, 1)
                     sp = sp.reshape(-1, 1)
                 train_soft_prob.append(sp)
-
-            # checkpoint on NMI
-            if self.train_nmi.avg > self.best_nmi:
-                self.best_nmi = self.train_nmi.avg
-                torch.save(self.model.state_dict(), self.model_save_path)
-                self.save_latents()
 
             # stack epoch probs
             train_soft_prob = np.concatenate(train_soft_prob, axis=0)
@@ -477,6 +478,7 @@ class VAEModel:
                 test_loss2 = 0.10 * kl2
 
                 test_proto_loss = torch.zeros(1, device=self.device, dtype=z1.dtype).squeeze()
+                pseudo_test = self.pseudo_test.to(self.device, non_blocking=True)
                 if self.proto_head is not None:
                     z1f = self._flatten_z(z1)
                     z2f = self._flatten_z(z2)
@@ -505,7 +507,6 @@ class VAEModel:
 
                     L_sup = logits.new_tensor(0.0)
                     if self.has_pseudo:
-                        pseudo_test = self.pseudo_test.to(self.device, non_blocking=True)
                         valid = (pseudo_test >= 0)
                         if valid.any():
                             L_sup = smooth_ce_loss(logits[valid], pseudo_test[valid], eps=float(self.label_eps))
@@ -521,18 +522,18 @@ class VAEModel:
                         float(self.lam_cons)    * L_cons
                     )
 
-                targets_test = self.true_test.to(self.device, non_blocking=True) if self.has_true else pseudo_test
                 valid_test = pseudo_test[pseudo_test >= 0]
                 batches_test = self.batch_test.to(self.device, non_blocking=True)
+                test_metrics_enabled = self.has_pseudo and valid_test.numel() > 0
 
                 test_mask_ratio, test_acc, test_ari, test_nmi, test_kbet, test_soft_prob = calculate_metrics(
                     batch_labels=batches_test,
-                    true_labels=valid_test,
+                    true_labels=valid_test if test_metrics_enabled else None,
                     batch_z1=z1,
                     batch_z2=z2,
                     threshold=self.threshold,
                     num_clusters=num_clusters,
-                    metrics=True
+                    metrics=test_metrics_enabled
                 )                
                 
                 test_total = test_loss1 + test_loss2 + test_proto_loss 
@@ -575,12 +576,32 @@ class VAEModel:
             #     'label_eps': self.label_eps
             # })
 
+            if self.has_pseudo:
+                if self.train_nmi.avg > self.best_nmi:
+                    self.best_nmi = self.train_nmi.avg
+                    torch.save(self.model.state_dict(), self.model_save_path)
+                    self.save_latents()
+            else:
+                if float(test_total) < self.best_loss:
+                    self.best_loss = float(test_total)
+                    torch.save(self.model.state_dict(), self.model_save_path)
+                    self.save_latents()
+
             if self.verbose:
-                print({k: round(float(v), 3) for k, v in {
-                    'Train NMI': self.train_nmi.avg, 'Train ARI': self.train_ari.avg,
-                    'Train ACC': self.train_acc.avg, 'Train kBET': self.train_kbet.avg,
-                    'Train CCR': mask_ratio
-                }.items()})
+                if self.has_pseudo:
+                    metrics_blob = {
+                        'Train NMI': self.train_nmi.avg,
+                        'Train ARI': self.train_ari.avg,
+                        'Train ACC': self.train_acc.avg,
+                        'Train kBET': self.train_kbet.avg,
+                        'Train CCR': mask_ratio
+                    }
+                else:
+                    metrics_blob = {
+                        'Train kBET': self.train_kbet.avg,
+                        'Train CCR': mask_ratio
+                    }
+                print({k: round(float(v), 3) for k, v in metrics_blob.items()})
                 # print(f'Train total loss: {self.losses.avg:.6f}   Test total loss: {float(test_total):.6f}')
             epoch_bar.set_postfix({"epoch": f"{epoch+1}/{self.num_epochs}",
                                    "Train_loss": f"{self.losses.avg:.4f}",
@@ -624,7 +645,7 @@ class VAEModel:
         return self._latents_cache
 
     @torch.no_grad()
-    def save_latents(self):
+    def save_latents(self) -> None:
         latents = self._collect_latents()
         torch.save(latents, f"{self.ckpt_dir}/all_latents.pt")
         torch.save(self.pre_encoder.state_dict(), self.encoder_save_path)
@@ -633,9 +654,9 @@ class VAEModel:
 
     def get_latent_representation(
         self,        
-        n_components: Optional[int] = 50,        
-        **pca_kwargs,
-    ):
+        n_components: int | None = 50,
+        **pca_kwargs: object,
+    ) -> NDArray[np.floating]:
         """
         Return PCA-compressed latent vectors suitable for ``adata.obsm``.
 

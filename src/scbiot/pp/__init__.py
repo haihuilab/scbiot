@@ -2,11 +2,15 @@
 Public preprocessing namespace.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from .setup_anndata import (
     AnnDataSetupError,
     ensure_anndata_setup,
     get_anndata_setup,
-    setup_anndata,
+    setup_anndata as _setup_anndata,
 )
 
 from .peaks import (
@@ -16,22 +20,15 @@ from .peaks import (
     annotate_gene_activity,
     harmonize_gene_names,
     knn_smooth_ga_on_atac,
-    ensure_csr_f32,   
-    create_gene_activity 
+    ensure_csr_f32,
+    create_gene_activity,
 )
 
-
-from typing import Dict, TYPE_CHECKING
-
-if TYPE_CHECKING:  # only for type checkers to avoid import cycles at runtime
-    from ..ot.coembedding import (
-        AtacPreprocessConfig,
-        AtacPreprocessResult,
-        assemble_joint_embedding,
-        preprocess_atac,
-    )
+if TYPE_CHECKING:
+    from anndata import AnnData
 
 __all__ = [
+    "AnnDataSetupError",
     "remove_promoter_proximal_peaks",
     "find_variable_features",
     "add_iterative_lsi",
@@ -44,37 +41,29 @@ __all__ = [
     "refine_domains",
     "SPATIAL_GRID_KEY",
     "SPATIAL_KNN_KEY",
+    "ensure_anndata_setup",
+    "get_anndata_setup",
     "setup_anndata",
-    "preprocess_atac",
-    "AtacPreprocessConfig",
-    "AtacPreprocessResult",
-    "assemble_joint_embedding",
 ]
 
 
-def __getattr__(name: str):
-    lazy_attrs: Dict[str, str] = {
-        "preprocess_atac": "preprocess_atac",
-        "AtacPreprocessConfig": "AtacPreprocessConfig",
-        "AtacPreprocessResult": "AtacPreprocessResult",
-        "assemble_joint_embedding": "assemble_joint_embedding",
-    }
-    if name in lazy_attrs:
-        # Local import to avoid circular initialization issues.
-        from ..ot.coembedding import (
-            AtacPreprocessConfig,
-            AtacPreprocessResult,
-            assemble_joint_embedding,
-            preprocess_atac,
-        )
+def setup_anndata(
+    adata: AnnData,
+    *,
+    var_key: str = "scBIOT_OT",
+    batch_key: str = "batch",
+    pseudo_key: str | None = "leiden_scBIOT_OT",
+    true_key: str | None = None,
+    overwrite: bool = False,
+) -> dict[str, str | None]:
+    return _setup_anndata(
+        adata,
+        var_key=var_key,
+        batch_key=batch_key,
+        pseudo_key=pseudo_key,
+        true_key=true_key,
+        overwrite=overwrite,
+    )
 
-        globals().update(
-            {
-                "preprocess_atac": preprocess_atac,
-                "AtacPreprocessConfig": AtacPreprocessConfig,
-                "AtacPreprocessResult": AtacPreprocessResult,
-                "assemble_joint_embedding": assemble_joint_embedding,
-            }
-        )
-        return globals()[name]
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+setup_anndata.__doc__ = _setup_anndata.__doc__

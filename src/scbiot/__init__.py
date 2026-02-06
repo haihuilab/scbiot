@@ -13,7 +13,10 @@ print(f"scbiot version {__version__}")
 # Keep OT helpers importable for docs without pulling heavy training dependencies.
 DOCS_MODE = bool(os.environ.get("SCBIOT_DOCS"))
 
+from . import models
 from . import ot
+from . import pl
+from . import pp
 
 if DOCS_MODE:
     VAE = Model_VAE = Encoder_model = Decoder_model = VAEModel = compute_loss = None  # type: ignore
@@ -43,5 +46,10 @@ __all__ = [
     "VAEModel",
     "VAETrainer",
     "compute_loss",
+    "models",
     "ot",
+    "pl",
+    "pp",
+    "spatial",
+    "pp_spatial",
 ]

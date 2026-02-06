@@ -199,11 +199,15 @@ def _safe_encode_obs_column(adata, colname: Optional[str]):
     if colname not in adata.obs.columns:
         return None, None
 
-    s = adata.obs[colname]
+    s = adata.obs[colname].copy()
     # Ensure categorical with explicit NA bucket if needed
     if s.isna().any():
+        if pd.api.types.is_categorical_dtype(s):
+            if "__NA__" not in list(s.cat.categories):
+                s = s.cat.add_categories(["__NA__"])
         s = s.fillna("__NA__")
-    s = s.astype("category")
+    if not pd.api.types.is_categorical_dtype(s):
+        s = s.astype("category")
     cats = list(s.cat.categories)
     codes = s.cat.codes.to_numpy(dtype=np.int64)
     return codes, cats

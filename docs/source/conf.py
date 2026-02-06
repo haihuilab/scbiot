@@ -35,6 +35,8 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
     'myst_parser',
+    'sphinx_copybutton',
+    'sphinx_design',
 ]
 
 # Mock heavy optional dependencies so autodoc can import scbiot without installing them.
@@ -82,7 +84,19 @@ source_suffix = {
 
 # -- Options for HTML output
 
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'scanpydoc'
+html_theme_options = {
+    "repository_url": "https://github.com/haihuilab/scbiot",
+    "repository_branch": "main",
+    "path_to_docs": "docs/source",
+    "use_repository_button": True,
+    "use_source_button": True,
+    "use_edit_page_button": True,
+    "use_issues_button": True,
+    "secondary_sidebar_items": {"**": ["page-toc", "sourcelink"]},
+    "show_navbar_depth": 2,
+    "home_page_in_toc": True,
+}
 html_static_path = ['_static']
 html_favicon = '_static/scbiot_logo.svg'
 html_logo = '_static/scbiot_logo.svg'

@@ -2,5 +2,6 @@ include README.md
 include README.rst
 include CHANGES.md
 include LICENSE
+include src/scbiot/py.typed
 recursive-include docs *
 recursive-include examples *

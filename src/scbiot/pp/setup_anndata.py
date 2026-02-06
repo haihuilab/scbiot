@@ -4,21 +4,39 @@ Helpers for registering AnnData fields that the transformer VAE expects.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Mapping, MutableMapping, Optional
+from collections.abc import Mapping, MutableMapping, Sequence
+from typing import TYPE_CHECKING, Protocol, TypeAlias
 
 try:
     from anndata import AnnData as _AnnData  # type: ignore
 except ImportError:  # pragma: no cover - optional dependency
     _AnnData = None  # type: ignore
 
+if TYPE_CHECKING:
+    from anndata import AnnData
+
 SCBIOT_REGISTRY_KEY = "_scbiot_setup"
+
+Key: TypeAlias = str
+
+
+class ObsFrame(Protocol):
+    columns: Sequence[str]
+
+
+class AnnDataLike(Protocol):
+    X: object | None
+    obsm: Mapping[Key, object]
+    layers: Mapping[Key, object]
+    obs: ObsFrame
+    uns: MutableMapping[Key, object]
 
 
 class AnnDataSetupError(RuntimeError):
     """Raised when AnnData metadata is missing or invalid."""
 
 
-def _matrix_exists(adata: Any, key: Optional[str]) -> bool:
+def _matrix_exists(adata: AnnDataLike, key: str | None) -> bool:
     if key in (None, "X"):
         return adata.X is not None
     if key in getattr(adata, "obsm", {}):
@@ -28,7 +46,7 @@ def _matrix_exists(adata: Any, key: Optional[str]) -> bool:
     return False
 
 
-def _validate_matrix(adata: Any, key: Optional[str]) -> None:
+def _validate_matrix(adata: AnnDataLike, key: str | None) -> None:
     if key is None:
         raise AnnDataSetupError("var_key cannot be None for transformer VAE training.")
     if not _matrix_exists(adata, key):
@@ -37,14 +55,14 @@ def _validate_matrix(adata: Any, key: Optional[str]) -> None:
         )
 
 
-def _validate_obs(adata: Any, key: Optional[str], *, field_name: str) -> None:
+def _validate_obs(adata: AnnDataLike, key: str | None, *, field_name: str) -> None:
     if key is None:
         raise AnnDataSetupError(f"{field_name} must be provided, got None.")
     if key not in adata.obs.columns:
         raise KeyError(f"'{key}' not found in adata.obs for {field_name}.")
 
 
-def _registry(adata: Any) -> MutableMapping[str, Any]:
+def _registry(adata: AnnDataLike) -> MutableMapping[str, object]:
     if SCBIOT_REGISTRY_KEY not in adata.uns:
         adata.uns[SCBIOT_REGISTRY_KEY] = {}
     registry = adata.uns[SCBIOT_REGISTRY_KEY]
@@ -52,7 +70,7 @@ def _registry(adata: Any) -> MutableMapping[str, Any]:
     return registry
 
 
-def get_anndata_setup(adata: Any) -> Dict[str, Any]:
+def get_anndata_setup(adata: AnnDataLike) -> dict[str, str | None]:
     """
     Return a shallow copy of the registered AnnData configuration.
     """
@@ -61,7 +79,7 @@ def get_anndata_setup(adata: Any) -> Dict[str, Any]:
     return dict(payload)
 
 
-def ensure_anndata_setup(adata: Any) -> Dict[str, Any]:
+def ensure_anndata_setup(adata: AnnDataLike) -> dict[str, str | None]:
     """
     Return the registered AnnData setup or raise if it is missing.
     """
@@ -74,14 +92,14 @@ def ensure_anndata_setup(adata: Any) -> Dict[str, Any]:
 
 
 def setup_anndata(
-    adata: Any,
+    adata: AnnData,
     *,
     var_key: str = "scBIOT_OT",
     batch_key: str = "batch",
-    pseudo_key: Optional[str] = "leiden_scBIOT_OT",
-    true_key: Optional[str] = None,
+    pseudo_key: str | None = "leiden_scBIOT_OT",
+    true_key: str | None = None,
     overwrite: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, str | None]:
     """
     Register the AnnData fields the transformer VAE relies on.
 

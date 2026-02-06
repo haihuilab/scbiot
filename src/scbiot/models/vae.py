@@ -1,16 +1,30 @@
-import torch
+from __future__ import annotations
+
 import math
+from collections.abc import Callable, Sequence
+from typing import Literal, TypeAlias
+
+import torch
 import torch.nn as nn
-import torch.nn.init as nn_init
 import torch.nn.functional as F
+import torch.nn.init as nn_init
 from torch import Tensor
+
+Categories: TypeAlias = Sequence[int] | None
+Initialization: TypeAlias = Literal["xavier", "kaiming"]
 
 
 
 
 
 class Tokenizer(nn.Module):
-    def __init__(self, d_numerical, categories, d_token, bias):
+    def __init__(
+        self,
+        d_numerical: int,
+        categories: Categories,
+        d_token: int,
+        bias: bool,
+    ) -> None:
         super().__init__()
         if categories is None:
             d_bias = d_numerical
@@ -33,12 +47,12 @@ class Tokenizer(nn.Module):
             nn_init.kaiming_uniform_(self.bias, a=math.sqrt(5))
 
     @property
-    def n_tokens(self):
+    def n_tokens(self) -> int:
         return len(self.weight) + (
             0 if self.category_offsets is None else len(self.category_offsets)
         )
 
-    def forward(self, x_num, x_cat):
+    def forward(self, x_num: Tensor | None, x_cat: Tensor | None) -> Tensor:
         x_some = x_num if x_cat is None else x_cat
         assert x_some is not None
         x_num = torch.cat(
@@ -68,7 +82,7 @@ class Tokenizer(nn.Module):
     
 
 class MLP(nn.Module):
-    def __init__(self, dims):
+    def __init__(self, dims: Sequence[int]) -> None:
         super(MLP, self).__init__()
         self.dims = dims
         self.layers = []
@@ -79,14 +93,20 @@ class MLP(nn.Module):
 
         self.mlp = nn.Sequential(*self.layers[:-1])  # Exclude final ReLU non-linearity
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         x = self.mlp(x)
         return x
 
 
 
 class MultiheadAttention(nn.Module):
-    def __init__(self, d, n_heads, dropout, initialization = 'kaiming'):
+    def __init__(
+        self,
+        d: int,
+        n_heads: int,
+        dropout: float,
+        initialization: Initialization = "kaiming",
+    ) -> None:
 
         if n_heads > 1:
             assert d % n_heads == 0
@@ -108,7 +128,7 @@ class MultiheadAttention(nn.Module):
         if self.W_out is not None:
             nn_init.zeros_(self.W_out.bias)
 
-    def _reshape(self, x):
+    def _reshape(self, x: Tensor) -> Tensor:
         batch_size, n_tokens, d = x.shape
         d_head = d // self.n_heads
         return (
@@ -117,7 +137,13 @@ class MultiheadAttention(nn.Module):
             .reshape(batch_size * self.n_heads, n_tokens, d_head)
         )
 
-    def forward(self, x_q, x_kv, key_compression = None, value_compression = None):
+    def forward(
+        self,
+        x_q: Tensor,
+        x_kv: Tensor,
+        key_compression: Callable[[Tensor], Tensor] | None = None,
+        value_compression: Callable[[Tensor], Tensor] | None = None,
+    ) -> Tensor:
   
         q, k, v = self.W_q(x_q), self.W_k(x_kv), self.W_v(x_kv)
         for tensor in [q, k, v]:
@@ -162,12 +188,12 @@ class Transformer(nn.Module):
         n_heads: int,
         d_out: int,
         d_ffn_factor: int,
-        attention_dropout = 0.0,
-        ffn_dropout = 0.0,
-        residual_dropout = 0.0,        
-        prenormalization = True,
-        initialization = 'kaiming'        
-    ):
+        attention_dropout: float = 0.0,
+        ffn_dropout: float = 0.0,
+        residual_dropout: float = 0.0,
+        prenormalization: bool = True,
+        initialization: Initialization = "kaiming",
+    ) -> None:
         super().__init__()
 
         def make_normalization():
@@ -202,7 +228,7 @@ class Transformer(nn.Module):
         self.head = nn.Linear(d_token, d_out)
 
 
-    def _start_residual(self, x, layer, norm_idx):
+    def _start_residual(self, x: Tensor, layer: nn.ModuleDict, norm_idx: int) -> Tensor:
         x_residual = x
         if self.prenormalization:
             norm_key = f'norm{norm_idx}'
@@ -210,7 +236,13 @@ class Transformer(nn.Module):
                 x_residual = layer[norm_key](x_residual)
         return x_residual
 
-    def _end_residual(self, x, x_residual, layer, norm_idx):
+    def _end_residual(
+        self,
+        x: Tensor,
+        x_residual: Tensor,
+        layer: nn.ModuleDict,
+        norm_idx: int,
+    ) -> Tensor:
         if self.residual_dropout:
             x_residual = F.dropout(x_residual, self.residual_dropout, self.training)
         x = x + x_residual
@@ -218,7 +250,7 @@ class Transformer(nn.Module):
             x = layer[f'norm{norm_idx}'](x)
         return x
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         for layer_idx, layer in enumerate(self.layers):
             is_last_layer = layer_idx + 1 == len(self.layers)
 
@@ -243,7 +275,17 @@ class Transformer(nn.Module):
 
 
 class VAE(nn.Module):
-    def __init__(self, d_numerical, categories, num_layers, hid_dim, n_head = 1, factor = 4, bias = True, num_batches: int = 1):
+    def __init__(
+        self,
+        d_numerical: int,
+        categories: Categories,
+        num_layers: int,
+        hid_dim: int,
+        n_head: int = 1,
+        factor: int = 4,
+        bias: bool = True,
+        num_batches: int = 1,
+    ) -> None:
         super(VAE, self).__init__()
  
         self.d_numerical = d_numerical
@@ -259,15 +301,17 @@ class VAE(nn.Module):
         self.decoder = Transformer(num_layers, hid_dim, n_head, hid_dim, factor)
 
 
-    def get_embedding(self, x):
+    def get_embedding(self, x: Tensor) -> Tensor:
         return self.encoder_mu(x, x).detach() 
 
-    def reparameterize(self, mu, logvar):
+    def reparameterize(self, mu: Tensor, logvar: Tensor) -> Tensor:
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
         return mu + eps * std
 
-    def forward(self, x_num, x_cat):
+    def forward(
+        self, x_num: Tensor | None, x_cat: Tensor | None
+    ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
 
         x = self.Tokenizer(x_num, x_cat)
 
@@ -281,7 +325,7 @@ class VAE(nn.Module):
         return z, h, mu_z, std_z
 
 class Reconstructor(nn.Module):
-    def __init__(self, d_numerical, categories, d_token):
+    def __init__(self, d_numerical: int, categories: Categories, d_token: int) -> None:
         super(Reconstructor, self).__init__()
 
         self.d_numerical = d_numerical
@@ -300,7 +344,7 @@ class Reconstructor(nn.Module):
                 nn.init.xavier_uniform_(recon.weight, gain=1 / math.sqrt(2))
                 self.cat_recons.append(recon)
 
-    def forward(self, h):
+    def forward(self, h: Tensor) -> tuple[Tensor, list[Tensor]]:
         h_num  = h[:, :self.d_numerical]
         h_cat  = h[:, self.d_numerical:]
 
@@ -315,17 +359,28 @@ class Reconstructor(nn.Module):
 
 
 class Model_VAE(nn.Module):
-    def __init__(self, num_layers, d_numerical, categories, d_token, n_head = 1, factor = 4,  bias = True):
+    def __init__(
+        self,
+        num_layers: int,
+        d_numerical: int,
+        categories: Categories,
+        d_token: int,
+        n_head: int = 1,
+        factor: int = 4,
+        bias: bool = True,
+    ) -> None:
         super(Model_VAE, self).__init__()
         self.Tokenizer = Tokenizer(d_numerical, categories, d_token, bias)
         self.VAE = VAE(d_numerical, categories, num_layers, d_token, n_head = n_head, factor = factor, bias = bias)
         self.Reconstructor = Reconstructor(d_numerical, categories, d_token)     
 
-    def get_embedding(self, x_num, x_cat):
+    def get_embedding(self, x_num: Tensor | None, x_cat: Tensor | None) -> Tensor:
         x = self.Tokenizer(x_num, x_cat)
         return self.VAE.get_embedding(x)
 
-    def forward(self, x_num, x_cat):
+    def forward(
+        self, x_num: Tensor | None, x_cat: Tensor | None
+    ) -> tuple[Tensor, Tensor, list[Tensor], Tensor, Tensor]:
 
         z, h, mu_z, std_z = self.VAE(x_num, x_cat)
 
@@ -348,7 +403,16 @@ class Encoder_model(nn.Module):
         - if return_all == False (default): returns z  (B, T, d_token)  [backward-compatible]
         - if return_all == True : returns (z, mu, std) all (B, T, d_token)
     """
-    def __init__(self, num_layers, d_numerical, categories, d_token, n_head, factor, bias=True):
+    def __init__(
+        self,
+        num_layers: int,
+        d_numerical: int,
+        categories: Categories,
+        d_token: int,
+        n_head: int,
+        factor: int,
+        bias: bool = True,
+    ) -> None:
         super(Encoder_model, self).__init__()
         self.Tokenizer   = Tokenizer(d_numerical, categories, d_token, bias)
         # generic latent stream (matches your previous self.VAE_Encoder)
@@ -358,7 +422,7 @@ class Encoder_model(nn.Module):
         self.encoder_std = Transformer(num_layers, d_token, n_head, d_token, factor)
         self._min_std = 1e-6
 
-    def load_weights(self, Pretrained_VAE):
+    def load_weights(self, Pretrained_VAE: Model_VAE) -> None:
         # Tokenizer
         if hasattr(Pretrained_VAE, "VAE") and hasattr(Pretrained_VAE.VAE, "Tokenizer"):
             self.Tokenizer.load_state_dict(Pretrained_VAE.VAE.Tokenizer.state_dict(), strict=False)
@@ -373,7 +437,12 @@ class Encoder_model(nn.Module):
         if hasattr(Pretrained_VAE.VAE, "encoder_std"):
             self.encoder_std.load_state_dict(Pretrained_VAE.VAE.encoder_std.state_dict(), strict=False)
 
-    def forward(self, x_num, x_cat, return_all: bool = False):
+    def forward(
+        self,
+        x_num: Tensor | None,
+        x_cat: Tensor | None,
+        return_all: bool = False,
+    ) -> Tensor | tuple[Tensor, Tensor, Tensor]:
         """
         Returns:
           - if return_all=False (default): z
@@ -400,17 +469,25 @@ class Encoder_model(nn.Module):
 
 
 class Decoder_model(nn.Module):
-   def __init__(self, num_layers, d_numerical, categories, d_token, n_head, factor, bias=True):  
+   def __init__(
+       self,
+       num_layers: int,
+       d_numerical: int,
+       categories: Categories,
+       d_token: int,
+       n_head: int,
+       factor: int,
+       bias: bool = True,
+   ) -> None:
        super(Decoder_model, self).__init__()
-       self.VAE_Decoder = Transformer(num_layers, d_token, n_head, d_token, factor)          
+       self.VAE_Decoder = Transformer(num_layers, d_token, n_head, d_token, factor)
        self.Detokenizer = Reconstructor(d_numerical, categories, d_token)
 
-   def load_weights(self, Pretrained_VAE):
+   def load_weights(self, Pretrained_VAE: Model_VAE) -> None:
        self.VAE_Decoder.load_state_dict(Pretrained_VAE.VAE.decoder.state_dict())
        self.Detokenizer.load_state_dict(Pretrained_VAE.Reconstructor.state_dict())
 
-   def forward(self, z):                 
+   def forward(self, z: Tensor) -> tuple[Tensor, list[Tensor]]:                 
        h = self.VAE_Decoder(z)      
        x_hat_num, x_hat_cat = self.Detokenizer(h)
        return x_hat_num, x_hat_cat
-

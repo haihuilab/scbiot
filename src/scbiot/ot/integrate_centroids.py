@@ -5,14 +5,14 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
-from .integrate import (
+from .integrate import integrate_ot
+from ..utils.ot_helpers import (
     _FAISS_AVAIL,
     _as_nd_f32_c,
     _faiss_ready,
     _get_faiss_index,
     _local_knn_density,
     _minikm_centers,
-    integrate_ot,
 )
 from ._presets import get_modality_preset
 
