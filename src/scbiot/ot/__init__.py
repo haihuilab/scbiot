@@ -10,6 +10,7 @@ from ._presets import get_modality_preset as _get_modality_preset
 __all__ = [
     "integrate",    
     "integrate_centroids",
+    "integrate_paired",
     "supbiot",
 ]
 
@@ -160,8 +161,8 @@ def integrate(
     _args = {key: value for key, value in _args.items() if value is not _UNSET}
     params = {**_get_modality_preset(mode), **_args, **overrides}
 
-    # if mode in ("paired"):
-    #     return integrate_paired(adata, **params)
+    if mode in ("paired"):
+        return integrate_paired(adata, **params)
 
     return integrate_ot(adata, modality=mode, **params)
 
