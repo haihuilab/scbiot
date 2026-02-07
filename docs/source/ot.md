@@ -1,16 +1,20 @@
 # Optimal transport: `ot`
 
-OT utilities for aligning batches and modalities. The functions below match what
-you see in the tutorials; refer to the notebooks for full, runnable examples.
+OT utilities for aligning batches and modalities. The public API entry point is
+`integrate`, which matches the workflows shown in the tutorials.
 
-- `integrate`: batch correction for single-modality data (RNA or ATAC).
-- `integrate_ot`: OT-only integration when you want to supply your own embedding.
-- `pp.coembed_pca`: build a shared PCA embedding for unpaired modalities.
-- `harmonize_gene_names`: ensure gene naming across RNA/ATAC inputs matches.
+For unpaired RNA/ATAC workflows, build a shared PCA embedding (see the
+tutorials) and then run:
 
-For unpaired RNA/ATAC workflows, compute a shared PCA with `pp.coembed_pca` and then run
-`ot.integrate(preset="anchor", obsm_key="X_pca_shared", batch_key="modality",
-reference_category="reference")` to align query cells to the reference.
+```python
+adata, metrics = scb.ot.integrate(
+    adata,
+    preset="anchor",
+    obsm_key="X_pca_shared",
+    batch_key="modality",
+    reference_category="reference",
+)
+```
 
 ## Scaling options
 
@@ -55,10 +59,9 @@ adata, metrics = scb.ot.integrate(
 
 ## OT backend controls
 
-All OT entry points share the ``use_gpu``/``gpu_device`` and ``ot_backend`` knobs.
-In addition, :func:`scbiot.ot.integrate` (and the modality presets that wrap it)
-now expose an ``ot_mode`` parameter that selects between unbalanced OT
-(``"unbalanced"``, the rare-aware behavior) and balanced OT (``"balanced"``) for
-stronger batch mixing. When you request balanced OT while keeping
-``reference="largest"``, scBIOT automatically switches to the union reference so
-that every batch can move symmetrically.
+`scbiot.ot.integrate` exposes the ``use_gpu``/``gpu_device`` and ``ot_backend``
+knobs. It also supports ``ot_mode`` to select unbalanced OT (``"unbalanced"``,
+the rare-aware behavior) or balanced OT (``"balanced"``) for stronger batch
+mixing. When you request balanced OT while keeping ``reference="largest"``,
+scBIOT automatically switches to the union reference so that every batch can
+move symmetrically.

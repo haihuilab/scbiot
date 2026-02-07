@@ -35,5 +35,3 @@ Highlights
    :caption: API reference
 
    api
-   preprocessing
-   ot

@@ -66,8 +66,9 @@ to every cell with 8-nearest-centroid weights:
 
 .. code-block:: python
 
-    adata, metrics = scb.ot.integrate_centroids(
+    adata, metrics = scb.ot.integrate(
         adata,
+        preset="centroid",
         obsm_key="X_pca",
         batch_key="batch",
         out_key="X_ot",
@@ -76,7 +77,6 @@ to every cell with 8-nearest-centroid weights:
         max_samples_per_batch=500_000,
         k_interp=8,
         chunk_size=500_000,
-        modality="rna",
     )
     print(metrics)
 

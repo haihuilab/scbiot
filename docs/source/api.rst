@@ -1,8 +1,7 @@
 API
 ===
 
-Core public entry points for OT integration and preparing AnnData objects for the
-Transformer VAE.
+The public API entry point for optimal transport integration.
 
 OT integration
 --------------
@@ -14,19 +13,3 @@ OT integration
    :nosignatures:
 
    integrate
-   integrate_ot
-   integrate_centroids
-
-
-AnnData utilities
------------------
-
-.. currentmodule:: scbiot.pp
-
-.. autosummary::
-   :toctree: generated
-   :nosignatures:
-
-   setup_anndata
-   ensure_anndata_setup
-   get_anndata_setup

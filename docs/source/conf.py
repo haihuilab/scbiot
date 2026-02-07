@@ -75,6 +75,16 @@ intersphinx_mapping = {
 intersphinx_disabled_domains = ['std']
 
 templates_path = ['_templates']
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "generated/scbiot.ot.integrate_centroids.rst",
+    "generated/scbiot.ot.integrate_ot.rst",
+    "generated/scbiot.pp.ensure_anndata_setup.rst",
+    "generated/scbiot.pp.get_anndata_setup.rst",
+    "generated/scbiot.pp.setup_anndata.rst",
+]
 
 # Support both reStructuredText and Markdown sources
 source_suffix = {
