@@ -1,7 +1,7 @@
 Supervised scBIOT (SupBIOT)
 ===========================
 
-:download:`Open notebook <../../../examples/supervised_lung_benchmarking.ipynb>` to see label transfer and supervised contrastive training for scRNA-seq data.
+:download:`Open notebook <../../../examples/supervised_lung_benchmarking.ipynb>` to see label transfer and supervised contrastive training for scRNA-seq data. or :download:`grab the RST source <1b_scrna_supervised_supbiot.rst>`
 
 Environment, data, and preprocessing
 ------------------------------------

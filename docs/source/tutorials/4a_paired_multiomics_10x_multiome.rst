@@ -1,7 +1,7 @@
 10x Multiome integration
 ========================
 
-:download:`Open notebook <../../../examples/multiome_integration.ipynb>` for joint RNA+ATAC analysis on matched 10x Multiome data.
+:download:`Open notebook <../../../examples/multiome_integration.ipynb>` for joint RNA+ATAC analysis on matched 10x Multiome data. or :download:`grab the RST source <4a_paired_multiomics_10x_multiome.rst>`
 
 Environment and inputs
 ----------------------

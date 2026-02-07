@@ -1,7 +1,7 @@
 Label transfer from scRNA-seq to spatial Xenium
 ===============================================
 
-:download:`Open notebook <../../../examples/xenium_10x_ovarian_label_transfer_with_supbiot.ipynb>`
+:download:`Open notebook <../../../examples/xenium_10x_ovarian_label_transfer_with_supbiot.ipynb>` or :download:`grab the RST source <8b_xenium_10x_ovarian_label_transfer_supbiot.rst>`
 to reproduce the ovarian Xenium label transfer workflow with supBIOT.
 
 Inputs and quality control

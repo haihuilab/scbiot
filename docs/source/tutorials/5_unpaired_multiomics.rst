@@ -1,7 +1,7 @@
 5. Unpaired Multiomics
 ===================
 
-:download:`Open notebook <../../../examples/unpaired_Yao-2021_integration.ipynb>` to match modalities with optimal transport when cells are unpaired.
+:download:`Open notebook <../../../examples/unpaired_Yao-2021_integration.ipynb>` to match modalities with optimal transport when cells are unpaired. or :download:`grab the RST source <5_unpaired_multiomics.rst>`
 
 Load the Yao et al. 2021 RNA and ATAC AnnData objects, set reproducibility, and pull in the dependencies used in the notebook:
 

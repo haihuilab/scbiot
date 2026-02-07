@@ -1,7 +1,7 @@
 SNARE-seq integration (Chen 2019)
 ==================================
 
-:download:`Open notebook <../../../examples/paired_Chen-2019_integration.ipynb>` to align paired transcriptome and chromatin profiles from SNARE-seq.
+:download:`Open notebook <../../../examples/paired_Chen-2019_integration.ipynb>` to align paired transcriptome and chromatin profiles from SNARE-seq. or :download:`grab the RST source <4b_paired_multiomics_snare_seq.rst>`
 
 Environment and inputs
 ----------------------

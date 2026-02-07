@@ -1,7 +1,7 @@
 Lung atlas benchmarking (unsupervised)
 ======================================
 
-:download:`Open notebook <../../../examples/unsupervised_lung_benchmarking.ipynb>` for an end-to-end workflow with unsupervised integration, evaluation metrics, and downstream analysis.
+:download:`Open notebook <../../../examples/unsupervised_lung_benchmarking.ipynb>` for an end-to-end workflow with unsupervised integration, evaluation metrics, and downstream analysis. or :download:`grab the RST source <1a_scrna_lung_atlas_benchmarking.rst>`
 
 Environment and data
 --------------------

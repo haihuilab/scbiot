@@ -1,7 +1,7 @@
 3. scATAC-seq
 ==========
 
-:download:`Open notebook <../../../examples/atac_brain_large_window_integration.ipynb>` covering iterative LSI, peak selection, and integration across scATAC-seq replicates.
+:download:`Open notebook <../../../examples/atac_brain_large_window_integration.ipynb>` covering iterative LSI, peak selection, and integration across scATAC-seq replicates. or :download:`grab the RST source <3_scatac_seq.rst>`
 
 Environment and data
 --------------------

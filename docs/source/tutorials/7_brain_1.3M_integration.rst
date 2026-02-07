@@ -1,7 +1,7 @@
 7. Brain-1.3M dataset integration
 ===============================
 
-:download:`Open the notebook <../../../examples/brain_1.3M_gpu_integration.ipynb>`
+:download:`Open the notebook <../../../examples/brain_1.3M_gpu_integration.ipynb>` or :download:`grab the RST source <7_brain_1.3M_integration.rst>`
 to reproduce the RAPIDS-accelerated workflow that preprocesses, integrates, and
 denoises 1.3 million mouse brain cells.  The tutorial mirrors that notebook so
 you can bring the same GPU-friendly recipe into your own workloads.
