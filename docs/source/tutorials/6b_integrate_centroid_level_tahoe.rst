@@ -78,9 +78,8 @@ the unbalanced mode that handles skewed batch sizes:
 
 .. code-block:: python
 
-    adata, metrics = scb.ot.integrate(
+    adata, metrics = scb.ot.integrate_centroids(
         adata,
-        preset="centroid",
         obsm_key="X_pca",
         batch_key="plate",
         out_key="X_ot",
@@ -91,6 +90,7 @@ the unbalanced mode that handles skewed batch sizes:
         chunk_size=1_000_000,
         k_interp=8,
         K_pseudo=64,
+        modality="rna",
         use_gpu=True,
         verbose=True,
     )
