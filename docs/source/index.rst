@@ -12,26 +12,27 @@ Highlights
 ----------
 
 * Fast optimal transport with GPU.
-* A unified `scBIOT` models that can embed RNA, ATAC, or multi-omics modalities and reuse the fitted pipeline for inference on new batches.
-* Supports scRNA-seq, scATAC-seq, and unpaired multi-omics.
-* Built-in preprocessing steps (iterative LSI).
+* A unified `scBIOT` models that can embed RNA, ATAC, or multi-omics modalities.
+* Supports scRNA-seq, snATAC-seq, and paired and unpaired multi-omics.
+* Supports label transfer across disjoint datasets, such as scRNA-seq to Xenium, scRNA-seq to snATAC-seq.
+* Built-in preprocessing steps (iterative LSI, gene activity annotation from peaks, coembedding of PCA from multiomics).
 * Support both CPU and GPU.
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
    :caption: Get started
 
    installation
    usage
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
    :caption: Tutorials
 
    tutorials
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
    :caption: API reference
 
    api
