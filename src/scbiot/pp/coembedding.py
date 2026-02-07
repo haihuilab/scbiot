@@ -60,6 +60,7 @@ def _joint_hvgs(
         n_top_genes=min(n_top, adata_rna.n_vars),
         layer=rna_norm,
         batch_key=use_batch,
+        span=0.6,
         inplace=True,
     )
     sc.pp.highly_variable_genes(
@@ -67,6 +68,7 @@ def _joint_hvgs(
         flavor="seurat_v3",
         n_top_genes=min(n_top, adata_ga.n_vars),
         layer=ga_norm,
+        span=0.6,
         inplace=True,
     )
     rna_hv = set(adata_rna.var_names[adata_rna.var["highly_variable"].values])

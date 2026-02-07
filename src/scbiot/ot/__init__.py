@@ -1,27 +1,31 @@
 from __future__ import annotations
 
+from inspect import signature
 import warnings
 from typing import Any, Optional, Literal, Sequence
 from .integrate import integrate_ot
 from .integrate_centroids import integrate_centroids
+from .integrate_paired import integrate_paired
 
 from .supbiot import transfer_labels
 from ._presets import get_modality_preset as _get_modality_preset
 
 __all__ = [
-    "integrate",    
+    "integrate",
     "integrate_centroids",
+    "integrate_paired",
     "supbiot",
 ]
 
 _UNSET = object()  # Sentinel to detect which args were explicitly provided.
+_PAIRED_ARG_KEYS = set(signature(integrate_paired).parameters) - {"adata"}
 
 def integrate(
     adata: Any,
     obsm_key: str = _UNSET,
     batch_key: str = _UNSET,
     out_key: str = _UNSET,
-    preset: Literal["rna", "atac", "supervised", "anchor", "centroid", "spatial"] = _UNSET,
+    preset: Literal["rna", "atac", "supervised", "anchor", "centroid", "spatial", "paired"] = _UNSET,
     K_ref: int = _UNSET,
     K_batch: int = _UNSET,
     reg: float = _UNSET,
@@ -95,7 +99,8 @@ def integrate(
         Destination key in ``adata.obsm`` for the corrected coordinates.
     preset
         Default settings used for integration of scRNA-seq ("rna"), supervised ("supervised"),
-        snATAC-seq ("atac"), spatial ("spatial"), multiomics ("anchor"), or centroid OT ("centroid").
+        snATAC-seq ("atac"), spatial ("spatial"), multiomics for unpaired workflows ("anchor"),
+        matched RNA/ATAC multiomics ("paired"), or centroid OT ("centroid").
     K_ref / K_batch
         Reference and batch-specific prototype sizes used for OT coupling.
     reg / reg_m
@@ -199,6 +204,8 @@ def integrate(
         raise TypeError("integrate() got multiple values for 'preset' (old name 'modality' also provided)")
 
     mode = str(preset_value).lower()
+    if mode == "paired" and approximate_ot:
+        raise ValueError("approximate_ot is not supported for the 'paired' preset.")
     effective_centroid = centroid_ot or (mode == "centroid")
     if effective_centroid and approximate_ot:
         raise ValueError(
@@ -237,6 +244,9 @@ def integrate(
         params.pop("mode", None)
         centroid_mode = None if mode == "centroid" else mode
         return integrate_centroids(adata, modality=centroid_mode, **params)
+    if mode == "paired":
+        paired_kwargs = {k: params[k] for k in _PAIRED_ARG_KEYS if k in params}
+        return integrate_paired(adata, **paired_kwargs)
     params.pop("mode", None)
     return integrate_ot(adata, modality=mode, **params)
 

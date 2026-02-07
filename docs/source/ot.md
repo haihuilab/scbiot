@@ -12,6 +12,21 @@ For unpaired RNA/ATAC workflows, compute a shared PCA with `pp.coembed_pca` and 
 `ot.integrate(preset="anchor", obsm_key="X_pca_shared", batch_key="modality",
 reference_category="reference")` to align query cells to the reference.
 
+For paired RNA/ATAC workflows, use the `paired` preset so OT sees each cell's matched views directly. Call
+.. code-block:: python
+
+    adata, metrics = scb.ot.integrate(
+        adata,
+        preset="paired",
+        obsm_key="X_pca",
+        batch_key="batch",
+        out_key="X_ot",
+        mode="ufgw_barycenter",
+        view_keys=("X_pca", "X_lsi"),
+    )
+
+The `view_keys` tuple points to the RNA PCA and ATAC LSI embeddings so the barycentric objective leverages the paired measurements directly.
+
 ## Scaling options
 
 For ultra-large datasets, use centroid-level OT:
