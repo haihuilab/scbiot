@@ -1,6 +1,6 @@
-﻿scbiot.ot.integrate
-===================
+﻿scbiot.ot.integrate\_ot
+=======================
 
 .. currentmodule:: scbiot.ot
 
-.. autofunction:: integrate
+.. autofunction:: integrate_ot

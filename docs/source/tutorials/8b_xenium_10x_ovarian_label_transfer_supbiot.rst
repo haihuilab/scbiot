@@ -66,7 +66,7 @@ Load the scRNA-seq reference, map barcodes to cell types, and harmonize gene sym
     adata_ref.layers["counts"] = adata_ref.layers["sum"]
     adata_ref.X = adata_ref.layers["sum"]
 
-supBIOT label transfer
+Label transfer with supervised OT (supBIOT)
 ----------------------
 
 Compute a reference UMAP backbone, concatenate reference/query cells, and run
