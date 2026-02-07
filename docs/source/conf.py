@@ -7,8 +7,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "src"))
+DOCS_SOURCE = Path(__file__).resolve().parent
+DOCS_ROOT = DOCS_SOURCE.parent
+EXAMPLES_PATH = ROOT / "examples"
+JUPYTER_CACHE = DOCS_ROOT / "_jupyter_cache"
+sys.path.insert(0, str(DOCS_SOURCE / "_ext"))
 os.environ.setdefault("SCBIOT_DOCS", "1")
+os.environ.setdefault("SCBIOT_EXAMPLES_PATH", str(EXAMPLES_PATH))
 
 # Importing scbiot triggers heavy optional deps; read version directly instead.
 ABOUT_PATH = ROOT / "src" / "scbiot" / "__about__.py"
@@ -35,8 +40,10 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
     'myst_parser',
+    'myst_nb',
     'sphinx_copybutton',
     'sphinx_design',
+    'notebook_downloads',
 ]
 
 # Mock heavy optional dependencies so autodoc can import scbiot without installing them.
@@ -80,7 +87,14 @@ templates_path = ['_templates']
 source_suffix = {
     '.rst': 'restructuredtext',
     '.md': 'markdown',
+    '.ipynb': 'myst-nb',
 }
+
+nb_execution_mode = "force"
+nb_execution_timeout = 600
+nb_execution_cache_path = str(JUPYTER_CACHE)
+nb_execution_raise_on_error = True
+nb_execution_show_tb = True
 
 # -- Options for HTML output
 

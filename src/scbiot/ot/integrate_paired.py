@@ -231,7 +231,7 @@ def integrate_paired(
     use_gpu: bool = True,
     gpu_device: int = 0,
     ot_backend: str = "torch",
-) -> Tuple[Any, Dict[str, float | int]]:
+) -> Tuple[Any, Dict[str, float | int | Dict[str, float]]]:
     """
     Integrate paired multiome embeddings via OT barycentric projection.
 
@@ -292,8 +292,16 @@ def integrate_paired(
             f"view_key '{view_key}' has {X_view.shape[0]} rows; expected {adata.n_obs}."
         )
 
-    if not approximate_ot and not centroid_ot and X_base.shape[0] > 50_000:
-        raise ValueError("Full OT is disabled for n > 50_000; enable approximate_ot or centroid_ot.")
+    n_obs = int(X_base.shape[0])
+    auto_approximate = False
+    max_obs = 50_000
+    if not approximate_ot and not centroid_ot and n_obs > max_obs:
+        approximate_ot = True
+        auto_approximate = True
+        if verbose:
+            print(
+                f"[paired] n_obs={n_obs} exceeds {max_obs}; switching to approximate_ot=True"
+            )
 
     X_base, X_view, n_components = _trim_components(X_base, X_view, n_components)
     X_base_z = _zscore(X_base)
@@ -354,6 +362,8 @@ def integrate_paired(
         "diag_mass_used": float(diag_mass),
         "prior_strength": float(prior_strength),
     }
+    if auto_approximate:
+        metrics["auto_approximate_ot"] = True
 
     metrics.update(_compute_ot_stats(T, C))
 

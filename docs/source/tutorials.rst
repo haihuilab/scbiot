@@ -5,6 +5,13 @@ the Scanpy/Read the Docs layout with short landing pages, clear menus, and
 runnable code snippets. All notebooks live in ``examples/`` and can be opened
 locally or in any Jupyter environment.
 
+.. note::
+
+   Each tutorial page now renders the corresponding ``examples/*.ipynb``
+   directly via MyST-NB so the docs always show the latest outputs when you run
+   ``make -C docs html`` (the build installs ``scbiot`` and executes every
+   notebook, failing on any execution errors).
+
 Getting started
 ---------------
 

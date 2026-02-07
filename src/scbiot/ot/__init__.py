@@ -100,7 +100,9 @@ def integrate(
     preset
         Default settings used for integration of scRNA-seq ("rna"), supervised ("supervised"),
         snATAC-seq ("atac"), spatial ("spatial"), multiomics for unpaired workflows ("anchor"),
-        matched RNA/ATAC multiomics ("paired"), or centroid OT ("centroid").
+        matched RNA/ATAC multiomics ("paired"), or centroid OT ("centroid"). For
+        ``preset=\"paired\"``, provide ``view_key`` plus optional fusion weights
+        (``w_base``, ``w_view``) and pairing prior controls (``prior_strength``, ``diag_mass``).
     K_ref / K_batch
         Reference and batch-specific prototype sizes used for OT coupling.
     reg / reg_m
@@ -204,17 +206,17 @@ def integrate(
         raise TypeError("integrate() got multiple values for 'preset' (old name 'modality' also provided)")
 
     mode = str(preset_value).lower()
-    if mode == "paired" and approximate_ot:
-        raise ValueError("approximate_ot is not supported for the 'paired' preset.")
-    effective_centroid = centroid_ot or (mode == "centroid")
-    if effective_centroid and approximate_ot:
+    if centroid_ot and approximate_ot:
         raise ValueError(
             "integrate() received both approximate_ot and centroid_ot; enable only one."
         )
+    effective_centroid = (centroid_ot or (mode == "centroid")) and mode != "paired"
     _args = {key: value for key, value in _args.items() if value is not _UNSET}
     params = {**_get_modality_preset(mode), **_args, **overrides}
     if approximate_ot:
         params["approximate_ot"] = True
+    if centroid_ot and mode == "paired":
+        params["centroid_ot"] = True
     if reference_align is not _UNSET:
         params["reference_align"] = bool(reference_align)
     elif reference_category_set and mode == "anchor":
