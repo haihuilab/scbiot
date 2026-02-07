@@ -1,7 +1,7 @@
-6a. Lung atlas benchmark (balanced OT)
+6a. Lung atlas benchmark (centroid-level OT)
 ======================================
 
-:download:`Open the notebook <../../../examples/optimal_transport_centroid_level_benchmarking.ipynb>`
+:download:`Open the notebook <../../../examples/optimal_transport_centroid_level_benchmarking.ipynb>` or :download:`grab the RST source <6a_integrate_centroid_level_benchmarking.rst>`
 to reproduce the scIB lung atlas benchmark end-to-end.  The dataset already
 contains raw counts, batch annotations, and cell-type labels, so the tutorial
 focuses on preparation, centroid OT, and downstream evaluation.

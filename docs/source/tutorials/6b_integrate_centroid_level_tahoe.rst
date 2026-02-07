@@ -1,7 +1,7 @@
-6b. Tahoe-100M centroid pipeline
+6b. Scaling to Tahoe-100M datasets (centroid-level OT)
 ================================
 
-:download:`Open the notebook <../../../examples/optimal_transport_centroid_level_Tahoe100M.ipynb>`
+:download:`Open the notebook <../../../examples/optimal_transport_centroid_level_Tahoe100M.ipynb>` or :download:`grab the RST source <6b_integrate_centroid_level_tahoe.rst>`
 for the complete out-of-core workflow.  The steps below mirror that notebook so
 you can run the same procedure on local hardware or an HPC cluster.
 
@@ -109,7 +109,7 @@ it without loading the full dense matrix into memory:
         f"/home/figo/software/python_libs/plate_merged_ot_{'gpu' if use_gpu else 'cpu'}.zarr"
     )
 
-Million-cell visualization subset
+Subset to million-cell for visualization
 ---------------------------------
 
 Sample one million cells for exploratory plots.  The notebook runs Scanpy on
