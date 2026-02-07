@@ -66,7 +66,7 @@ Load the scRNA-seq reference, map barcodes to cell types, and harmonize gene sym
     adata_ref.layers["counts"] = adata_ref.layers["sum"]
     adata_ref.X = adata_ref.layers["sum"]
 
-SupBIOT label transfer
+supBIOT label transfer
 ----------------------
 
 Compute a reference UMAP backbone, concatenate reference/query cells, and run
@@ -148,3 +148,50 @@ reference/query alignment in UMAP space:
         legend_loc="right margin",
         title="",
     )
+
+.. figure:: /_static/plots/xenium_label_transfer_pred_conf_violin.png
+   :alt: supBIOT confidence by predicted cell type for query Xenium spots.
+   :width: 70%
+
+   Predicted labels carry assessment scores that help you filter low-confidence spots.
+
+.. figure:: /_static/plots/xenium_label_transfer_query_ref_umap.png
+   :alt: UMAP embedding of the Xenium query and scRNA-seq reference coloured by batch (left) and predicted labels (right).
+   :width: 85%
+
+   The supBIOT embedding keeps the reference structure intact while aligning query spots.
+
+Marker-level validation
+-----------------------
+
+Define the marker list that best represents the predicted cell types and run a
+`dotplot <https://scanpy.readthedocs.io/>`_ to ensure predicted labels express the
+expected genes.  The resulting visualization highlights each marker set's
+relative expression and (with the same dot sizes exported from the notebook) is
+shown below.
+
+.. figure:: /_static/plots/xenium_label_transfer_marker_dotplot.png
+   :alt: Dotplot of curated marker genes for Xenium predictions.
+   :width: 85%
+
+   Dotplot colours report average expression, dot sizes report fraction of cells.
+
+Correlation-based diagnostics
+-----------------------------
+
+Matching mean expression profiles between reference and predicted groups helps
+spot systematic label mismatches.  Use ``scb.pl.celltype_gene_mean_correlation``
+and ``scb.pl.celltype_predtype_mean_corr_heatmap`` (as in the notebook) to generate
+gene-wise scatterplots and heatmaps for the top marker genes.
+
+.. figure:: /_static/plots/xenium_label_transfer_gene_mean_corr.png
+   :alt: Correlation between predicted and reference mean expression for candidate markers.
+   :width: 100%
+
+   Each point summarizes a gene's mean expression across matched cell types.
+
+.. figure:: /_static/plots/xenium_label_transfer_predtype_heatmap.png
+   :alt: Heatmap of Pearson correlations between reference and predicted classes.
+   :width: 100%
+
+   The darker diagonal indicates strong agreement for most cell types.
