@@ -1,3 +1,6 @@
 :orphan:
 
-.. include:: 3_scatac_seq.rst
+.. toctree::
+   :maxdepth: 1
+
+   3_scatac_seq

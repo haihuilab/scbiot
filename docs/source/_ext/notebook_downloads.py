@@ -99,7 +99,7 @@ def _copy_notebook_files(app: Sphinx, entries: dict[str, NotebookInfo]) -> None:
 
 
 def verify_notebook_downloads(
-    html_dir: Path, entries: dict[str, NotebookInfo]
+    html_dir: Path, entries: dict[str, NotebookInfo], strict: bool = False
 ) -> None:
     if not entries:
         return
@@ -124,9 +124,10 @@ def verify_notebook_downloads(
             errors.append(f"{pagename}: missing notebook file {expected_notebook}")
 
     if errors:
-        raise SphinxError(
-            "Notebook download verification failed:\n- " + "\n- ".join(errors)
-        )
+        message = "Notebook download verification failed:\n- " + "\n- ".join(errors)
+        if strict:
+            raise SphinxError(message)
+        LOGGER.warning(message)
 
 
 def _on_build_finished(app: Sphinx, exception: Exception | None) -> None:
@@ -134,7 +135,8 @@ def _on_build_finished(app: Sphinx, exception: Exception | None) -> None:
         return
     entries = getattr(app.env, "_scbiot_notebook_entries", {})
     _copy_notebook_files(app, entries)
-    verify_notebook_downloads(Path(app.builder.outdir), entries)
+    strict = bool(getattr(app.config, "notebook_downloads_strict", False))
+    verify_notebook_downloads(Path(app.builder.outdir), entries, strict=strict)
 
 
 def _reset_notebook_entries(app: Sphinx) -> None:
@@ -142,6 +144,7 @@ def _reset_notebook_entries(app: Sphinx) -> None:
 
 
 def setup(app: Sphinx) -> dict[str, Any]:
+    app.add_config_value("notebook_downloads_strict", False, "env")
     app.connect("builder-inited", _reset_notebook_entries)
     app.connect("html-page-context", _set_notebook_context)
     app.connect("build-finished", _on_build_finished)

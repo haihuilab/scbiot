@@ -1,3 +1,6 @@
 :orphan:
 
-.. include:: 5_unpaired_multiomics.rst
+.. toctree::
+   :maxdepth: 1
+
+   5_unpaired_multiomics

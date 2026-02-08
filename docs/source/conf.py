@@ -98,6 +98,15 @@ nb_execution_cache_path = str(JUPYTER_CACHE)
 nb_execution_raise_on_error = True
 nb_execution_show_tb = True
 
+NOTEBOOK_DOWNLOADS_STRICT = (
+    os.environ.get("SCBIOT_DOCS_NOTEBOOK_DOWNLOADS_STRICT", "")
+    .strip()
+    .lower()
+    in {"1", "true", "yes", "on"}
+)
+READTHEDOCS = os.environ.get("READTHEDOCS", "").strip().lower() == "true"
+notebook_downloads_strict = NOTEBOOK_DOWNLOADS_STRICT and not READTHEDOCS
+
 # -- Options for HTML output
 
 html_theme = 'scanpydoc'

@@ -37,7 +37,7 @@ Highlights
    tutorials/4_paired_multiomics
    tutorials/5_unpaired_multiomics
    tutorials/6_integrate_centroid_level
-   tutorials/7_brain_1.3M_integration
+   tutorials/7_brain_1_3M_integration
    tutorials/8_label_transfer_with_supbiot
 
 .. toctree::

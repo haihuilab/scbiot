@@ -1,3 +1,6 @@
 :orphan:
 
-.. include:: 1b_scrna_supervised_supbiot.rst
+.. toctree::
+   :maxdepth: 1
+
+   1b_scrna_supervised_supbiot
