@@ -1,3 +1,9 @@
 :orphan:
 
-.. include:: 4_paired_multiomics.rst
+Paired multiomics overview
+==========================
+
+.. toctree::
+   :maxdepth: 1
+
+   4_paired_multiomics

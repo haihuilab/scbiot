@@ -22,34 +22,30 @@ class NotebookInfo:
 
 
 def resolve_notebook_info(
-    srcdir: Path, pagename: str, page_source_suffix: str | None = None
+    srcdir: Path,
+    pagename: str,
+    page_source_suffix: str | None = None,
+    output_dir: str = "_notebooks",
 ) -> NotebookInfo | None:
     notebook_relpath = PurePosixPath(f"{pagename}.ipynb")
     source_path = srcdir / notebook_relpath
     static_path = srcdir / "_static" / "notebooks" / notebook_relpath
 
-    if page_source_suffix == ".ipynb":
-        if source_path.exists():
-            return NotebookInfo(
-                source_path=source_path,
-                output_dir="_sources",
-                notebook_relpath=notebook_relpath.as_posix(),
-            )
-        LOGGER.warning("Notebook source missing for %s", source_path)
+    def build_info(path: Path) -> NotebookInfo:
+        return NotebookInfo(
+            source_path=path,
+            output_dir=output_dir,
+            notebook_relpath=notebook_relpath.as_posix(),
+        )
 
     if source_path.exists():
-        return NotebookInfo(
-            source_path=source_path,
-            output_dir="_sources",
-            notebook_relpath=notebook_relpath.as_posix(),
-        )
+        return build_info(source_path)
 
     if static_path.exists():
-        return NotebookInfo(
-            source_path=static_path,
-            output_dir="_static/notebooks",
-            notebook_relpath=notebook_relpath.as_posix(),
-        )
+        return build_info(static_path)
+
+    if page_source_suffix == ".ipynb":
+        LOGGER.warning("Notebook source missing for %s", source_path)
 
     return None
 
@@ -69,8 +65,12 @@ def _set_notebook_context(
     context: dict[str, Any],
     doctree: Any,
 ) -> None:
+    output_dir = getattr(app.config, "notebook_downloads_output_dir", "_notebooks")
     info = resolve_notebook_info(
-        Path(app.srcdir), pagename, context.get("page_source_suffix")
+        Path(app.srcdir),
+        pagename,
+        context.get("page_source_suffix"),
+        output_dir=output_dir,
     )
 
     context["has_notebook"] = info is not None
@@ -99,7 +99,10 @@ def _copy_notebook_files(app: Sphinx, entries: dict[str, NotebookInfo]) -> None:
 
 
 def verify_notebook_downloads(
-    html_dir: Path, entries: dict[str, NotebookInfo], strict: bool = False
+    html_dir: Path,
+    entries: dict[str, NotebookInfo],
+    *,
+    strict: bool = True,
 ) -> None:
     if not entries:
         return
@@ -114,8 +117,6 @@ def verify_notebook_downloads(
         contents = html_path.read_text(encoding="utf-8", errors="ignore")
         if "btn-download-notebook-button" not in contents:
             errors.append(f"{pagename}: missing .ipynb download entry")
-        if "btn-download-pdf-button" in contents:
-            errors.append(f"{pagename}: found .pdf download entry")
 
         expected_notebook = (
             html_dir / Path(info.output_dir) / Path(info.notebook_relpath)
@@ -123,11 +124,13 @@ def verify_notebook_downloads(
         if not expected_notebook.exists():
             errors.append(f"{pagename}: missing notebook file {expected_notebook}")
 
-    if errors:
-        message = "Notebook download verification failed:\n- " + "\n- ".join(errors)
-        if strict:
-            raise SphinxError(message)
-        LOGGER.warning(message)
+    if not errors:
+        return
+
+    message = "Notebook download verification failed:\n- " + "\n- ".join(errors)
+    if strict:
+        raise SphinxError(message)
+    LOGGER.warning(message)
 
 
 def _on_build_finished(app: Sphinx, exception: Exception | None) -> None:
@@ -135,8 +138,10 @@ def _on_build_finished(app: Sphinx, exception: Exception | None) -> None:
         return
     entries = getattr(app.env, "_scbiot_notebook_entries", {})
     _copy_notebook_files(app, entries)
-    strict = bool(getattr(app.config, "notebook_downloads_strict", False))
-    verify_notebook_downloads(Path(app.builder.outdir), entries, strict=strict)
+    strict = getattr(app.config, "notebook_downloads_strict", True)
+    verify_notebook_downloads(
+        Path(app.builder.outdir), entries, strict=strict
+    )
 
 
 def _reset_notebook_entries(app: Sphinx) -> None:
@@ -144,10 +149,11 @@ def _reset_notebook_entries(app: Sphinx) -> None:
 
 
 def setup(app: Sphinx) -> dict[str, Any]:
-    app.add_config_value("notebook_downloads_strict", False, "env")
     app.connect("builder-inited", _reset_notebook_entries)
     app.connect("html-page-context", _set_notebook_context)
     app.connect("build-finished", _on_build_finished)
+    app.add_config_value("notebook_downloads_output_dir", "_notebooks", "env")
+    app.add_config_value("notebook_downloads_strict", True, "env")
     return {
         "version": "0.1",
         "parallel_read_safe": True,

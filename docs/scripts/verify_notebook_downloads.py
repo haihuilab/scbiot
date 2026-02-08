@@ -30,7 +30,13 @@ def main() -> None:
         description="Verify notebook download entries in built HTML pages."
     )
     parser.add_argument("--source-dir", type=Path, default=SRC_DIR)
-    parser.add_argument("--html-dir", type=Path, default=DOCS_DIR / "build" / "html")
+    parser.add_argument("--html-dir", type=Path, default=DOCS_DIR / "_build" / "html")
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("_notebooks"),
+        help="Relative directory under the HTML output where notebooks are copied",
+    )
     args = parser.parse_args()
 
     source_dir = args.source_dir
@@ -43,7 +49,9 @@ def main() -> None:
     checked = 0
     for html_path, rel in _iter_html_pages(html_dir):
         pagename = rel.with_suffix("").as_posix()
-        info = resolve_notebook_info(source_dir, pagename)
+        info = resolve_notebook_info(
+            source_dir, pagename, output_dir=args.output_dir.as_posix()
+        )
         if not info:
             continue
 
@@ -51,11 +59,9 @@ def main() -> None:
         contents = html_path.read_text(encoding="utf-8", errors="ignore")
         if "btn-download-notebook-button" not in contents:
             errors.append(f"{pagename}: missing .ipynb download entry")
-        if "btn-download-pdf-button" in contents:
-            errors.append(f"{pagename}: found .pdf download entry")
 
         expected_notebook = (
-            html_dir / Path(info.output_dir) / Path(info.notebook_relpath)
+            html_dir / args.output_dir / Path(info.notebook_relpath)
         )
         if not expected_notebook.exists():
             errors.append(f"{pagename}: missing notebook file {expected_notebook}")

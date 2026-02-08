@@ -1,5 +1,8 @@
 :orphan:
 
+Lung atlas benchmarking
+=======================
+
 .. toctree::
    :maxdepth: 1
 

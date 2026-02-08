@@ -1,5 +1,8 @@
 :orphan:
 
+SNARE-seq paired multiomics tutorial
+====================================
+
 .. toctree::
    :maxdepth: 1
 

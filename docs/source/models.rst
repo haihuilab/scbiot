@@ -10,4 +10,5 @@ Models: ``models``
 
    setup_anndata
    vae
-   get_latent_representation
+   VAEModel
+   VAEModel.get_latent_representation

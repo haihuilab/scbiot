@@ -1,5 +1,8 @@
 :orphan:
 
+Supervised scRNA-seq with scBIOT
+================================
+
 .. toctree::
    :maxdepth: 1
 

@@ -1,3 +1,9 @@
 :orphan:
 
-.. include:: 1_scrna_seq.rst
+1. scRNA-seq
+===========
+
+.. toctree::
+   :maxdepth: 1
+
+   1_scrna_seq

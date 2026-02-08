@@ -1,0 +1,16 @@
+{% extends "!page.html" %}
+
+{% block body %}
+  {% if notebook_download_url %}
+    <div class="notebook-download-link">
+      <a
+        class="btn btn-primary btn-download-notebook-button"
+        href="{{ notebook_download_url }}"
+        role="button"
+      >
+        Download this notebook (.ipynb)
+      </a>
+    </div>
+  {% endif %}
+  {{ super() }}
+{% endblock %}
