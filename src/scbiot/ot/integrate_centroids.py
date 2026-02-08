@@ -77,6 +77,19 @@ def integrate_centroids(
         The same AnnData, with integrated coordinates stored in `adata_full.obsm[out_key]`.
     metrics
         Metrics dictionary returned by `integrate_ot`, augmented with `n_centroids`.
+
+    Examples
+    --------
+    Basic usage:
+
+    >>> import scbiot as scb
+    >>> adata, metrics = scb.ot.integrate_centroids(
+    ...     adata,
+    ...     obsm_key="X_pca",
+    ...     batch_key="batch",
+    ...     out_key="X_ot",
+    ...     n_centroids_per_batch=2048,
+    ... )
     """
     if modality is not None:
         modality_norm = str(modality).lower()

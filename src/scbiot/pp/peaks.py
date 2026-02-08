@@ -134,6 +134,35 @@ def remove_promoter_proximal_peaks(
     start_col: Optional[str] = None,
     end_col: Optional[str] = None,
 ) -> AnnData:
+    """
+    Remove peaks that overlap promoter windows defined from a GTF.
+
+    Parameters
+    ----------
+    adata:
+        ATAC AnnData with peaks in ``adata.var`` or encoded in ``adata.var_names``.
+    gtf_file:
+        Path to the GTF annotation used to define gene promoters.
+    promoter_up / promoter_down:
+        Upstream/downstream distances (bp) from the TSS defining promoter windows.
+    chrom_col / start_col / end_col:
+        Optional ``adata.var`` columns for peak coordinates. If not provided or missing,
+        the function tries standard column names or parses ``adata.var_names``.
+
+    Returns
+    -------
+    AnnData
+        Copy of ``adata`` with promoter-proximal peaks removed. The input ``adata`` is
+        annotated with ``adata.var["is_promoter_proximal"]``.
+
+    Examples
+    --------
+    Basic usage:
+
+    >>> import scbiot as scb
+    # download gtf from GENCODE: https://www.gencodegenes.org/human/    
+    >>> adata_atac = scb.pp.remove_promoter_proximal_peaks(atac, f"{dir}/inputs/gencode.vM25.chr_patch_hapl_scaff.annotation.gtf.gz")
+    """
     var = adata.var
     if chrom_col and start_col and end_col and {chrom_col, start_col, end_col}.issubset(var.columns):
         peaks_df = var[[chrom_col, start_col, end_col]].rename(
@@ -450,7 +479,44 @@ def add_iterative_lsi(
 ) -> np.ndarray:
     """
     Convenience wrapper that runs iterative LSI.
-    Note: We no longer precompute and pass a TF-IDF layer here to avoid double-normalization.
+
+    Parameters
+    ----------
+    adata:
+        ATAC AnnData with peak counts in ``.X`` or the layer selected via ``layer``.
+    n_components:
+        Number of LSI components to compute.
+    drop_first_component:
+        Drop the first component (often depth-associated) when True.
+    tfidf_layer:
+        Ignored; retained for backward compatibility.
+    add_key:
+        Key in ``adata.obsm`` to store the LSI embedding.
+    **lsi_kwargs:
+        Additional keyword arguments forwarded to ``lsi_transform`` (for example,
+        ``n_iter``, ``topN``, ``layer``, ``per_cluster_union``).
+
+    Returns
+    -------
+    np.ndarray
+        The LSI embedding written to ``adata.obsm[add_key]``.
+
+    Notes
+    -----
+    We no longer precompute and pass a TF-IDF layer here to avoid double-normalization.
+
+    Examples
+    --------
+    Basic usage:
+
+    >>> import scbiot as scb
+    >>> adata_top = scb.pp.remove_promoter_proximal_peaks(adata, f"{dir}/inputs/gencode.vM25.chr_patch_hapl_scaff.annotation.gtf.gz")    
+    # Peak selection
+    >>> scb.pp.find_variable_features(adata_top, batch_key="batchname_all")    
+    # TF-IDF
+    >>> scb.pp.add_iterative_lsi(adata_top, n_components=31, n_iter=2, drop_first_component=True, add_key="X_lsi")
+    >>> adata_atac.obs['X_lsi'] = adata_top.obs['X_lsi']
+
     """
     # Allow callers to override the layer via kwargs without clashing with the fixed default
     layer = lsi_kwargs.pop("layer", "counts")
@@ -482,6 +548,49 @@ def annotate_gene_activity(
     promoter_priority: bool = True,
     verbose: bool = True,
 ) -> AnnData:
+    """
+    Build a gene-activity AnnData by assigning ATAC peaks to genes.
+
+    Parameters
+    ----------
+    atac:
+        ATAC AnnData with peak counts in ``.X`` (or ``.layers["counts"]``).
+    gtf_file:
+        Path to the GTF annotation used for gene coordinates.
+    peak_chrom_col / peak_start_col / peak_end_col:
+        Column names in ``atac.var`` for peak coordinates. If missing, the function
+        falls back to standard columns or parses ``atac.var_names``.
+    gene_biotypes:
+        Gene biotypes to retain from the GTF (``gene_biotype`` or ``gene_type``).
+    promoter_up / promoter_down:
+        Upstream/downstream distances (bp) from TSS for promoter regions.
+    include_gene_body:
+        Include gene body overlaps in addition to promoters.
+    weight_by_distance:
+        Weight peak contributions by distance to the TSS.
+    tss_decay_bp:
+        Length scale (bp) for exponential decay when ``weight_by_distance`` is True.
+    prefer_gene_name:
+        Prefer ``gene_name`` over ``gene_id`` when naming genes.
+    promoter_priority:
+        Prefer promoter overlaps when a peak maps to both promoter and gene body.
+    verbose:
+        Emit progress logging when True.
+
+    Returns
+    -------
+    AnnData
+        Gene-activity matrix with genes as variables and cells as observations.
+        Includes ``var["n_peaks"]`` and ``uns["provenance"]`` metadata.
+
+    Examples
+    --------
+    Basic usage:
+
+    >>> import scbiot as scb
+    # download gtf from GENCODE: https://www.gencodegenes.org/human/
+    >>> ga = scb.pp.annotate_gene_activity(atac, f"{dir}/inputs/gencode.vM25.chr_patch_hapl_scaff.annotation.gtf.gz")
+    """
     var = atac.var
 
     def _normalize_chr(series: pd.Series) -> pd.Series:
@@ -819,6 +928,15 @@ def create_gene_activity(
     -----
     - Side effect: writes LSI embedding to `atac.obsm[lsi_key]`.
     - Set `copy_atac=True` if you don't want `atac` modified in-place.
+
+    Examples
+    --------
+    Basic usage:
+
+    >>> import scbiot as scb
+    # download gtf from GENCODE: https://www.gencodegenes.org/human/ 
+    >>> gtf_file = f"{dir}/inputs/gencode.vM25.chr_patch_hapl_scaff.annotation.gtf.gz"
+    >>> adata_ga = scb.pp.create_gene_activity(adata_atac, adata_gex, gtf_file=gtf_file, verbose=True)    
     """
     atac_in = atac.copy() if copy_atac else atac
 

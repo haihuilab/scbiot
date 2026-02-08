@@ -85,12 +85,14 @@ templates_path = ['_templates']
 
 # Support both reStructuredText and Markdown sources
 source_suffix = {
-    '.rst': 'restructuredtext',
-    '.md': 'markdown',
+    '.rst': 'restructuredtext',    
     '.ipynb': 'myst-nb',
 }
 
-nb_execution_mode = "force"
+NB_EXECUTION_MODE = os.environ.get("SCBIOT_DOCS_NB_EXECUTION", "off").strip().lower()
+if NB_EXECUTION_MODE not in {"auto", "cache", "force", "off"}:
+    NB_EXECUTION_MODE = "off"
+nb_execution_mode = NB_EXECUTION_MODE
 nb_execution_timeout = 600
 nb_execution_cache_path = str(JUPYTER_CACHE)
 nb_execution_raise_on_error = True

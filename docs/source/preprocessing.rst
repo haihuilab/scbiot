@@ -1,23 +1,18 @@
 Preprocessing: ``pp``
 =====================
 
-Utilities used by scBIOT to prepare AnnData objects for OT alignment and the
-Transformer VAE. These mirror what you see in the tutorials.
+Utilities used by scBIOT to prepare AnnData objects before OT alignment 
+-----------------
 
-**AnnData registration**
+.. currentmodule:: scbiot.pp
 
-- ``setup_anndata``
-
-**ATAC preprocessing**
-
-- ``remove_promoter_proximal_peaks``
-- ``find_variable_features``
-- ``add_iterative_lsi``
-- ``annotate_gene_activity``
-
-**Optimal transport**
-
-- ``ot.integrate``
-- ``pp.coembed_pca``
-
-See the tutorial pages for code snippets that call each function.
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+   
+    
+   annotate_gene_activity
+   remove_promoter_proximal_peaks   
+   add_iterative_lsi
+   create_gene_activity
+   coembed_pca

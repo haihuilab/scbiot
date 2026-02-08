@@ -1,4 +1,4 @@
-scbiot.models.vae
+﻿scbiot.models.vae
 =================
 
 .. currentmodule:: scbiot.models

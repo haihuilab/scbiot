@@ -63,6 +63,18 @@ def vae(
 
     Pass `_raw=True` to receive the bare torch.nn.Module implementation and
     provide `d_numerical` + `hid_dim` (or an integer in `adata`).
+
+    Examples
+    --------
+    Basic usage:
+
+    >>> import scbiot as scb
+    >>> model = scb.models.vae(
+    ...     adata,
+    ...     num_layers=2,
+    ...     var_key="scBIOT_OT",
+    ...     batch_key="batch",
+    ... )
     """
     raw = _raw
     if raw is None:

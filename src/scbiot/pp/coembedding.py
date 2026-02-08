@@ -142,6 +142,48 @@ def coembed_pca(
     Build a shared PCA coembedding (RNA-fitted PCA, GA projection) and return a joint AnnData.
 
     The PCA basis is learned from RNA and applied to GA after z-scoring with RNA statistics.
+
+    Parameters
+    ----------
+    adata_rna:
+        RNA AnnData with genes in ``.var_names``.
+    adata_ga:
+        Gene-activity AnnData aligned to the same genes (``.var_names``).
+    out_key:
+        Key in ``.obsm`` to store the shared PCA coordinates.
+    n_top_genes:
+        Number of shared highly variable genes to use when ``genes`` is not provided.
+    n_components:
+        Number of PCA components to compute.
+    rna_norm_layer:
+        Layer name to store log1p-normalized RNA counts for HVG/PCA.
+    ga_norm_layer:
+        Layer name to store log1p-normalized GA counts for HVG/PCA.
+    batch_key:
+        Optional ``adata_rna.obs`` column for batch-aware HVG selection.
+    label:
+        Column name added to ``adata_joint.obs`` to mark modality.
+    keys:
+        Labels for the two modalities, in RNA/GA order.
+    genes:
+        Explicit list of genes to use instead of HVGs.
+
+    Returns
+    -------
+    AnnData
+        Concatenated RNA/GA AnnData with shared PCA coordinates in ``.obsm[out_key]``.
+
+    Notes
+    -----
+    The inputs are modified in-place: normalized layers are added, ``.obsm[out_key]`` is
+    populated on both objects, and PCA loadings/metadata are stored on ``adata_rna``.
+
+    Examples
+    --------
+    Basic usage:
+
+    >>> import scbiot as scb
+    >>> adata_joint = scb.pp.coembed_pca(adata_rna, adata_ga, out_key="X_pca_shared")
     """
     if genes is None:
         genes_idx = _joint_hvgs(

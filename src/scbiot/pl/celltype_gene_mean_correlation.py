@@ -90,6 +90,18 @@ def celltype_gene_mean_correlation(
 
     means_*_df: genes x celltypes mean matrices
     corr_df: per-celltype summary table
+
+    Examples
+    --------
+    Basic usage:
+
+    >>> import scbiot as scb
+    >>> fig, corr_df, means_ref, means_query = scb.pl.celltype_gene_mean_correlation(
+    ...     adata_ref,
+    ...     adata_query,
+    ...     ref_group_key="cell_type",
+    ...     query_group_key="pred_cell_type",
+    ... )
     """
     # Import matplotlib lazily to avoid import-time backend issues for non-plot users.
     import matplotlib.pyplot as plt
@@ -274,6 +286,15 @@ def celltype_predtype_mean_corr_heatmap(
     Returns:
       fig, ax, corr_df (rows=ref cell_type, cols=query pred_cell_type),
       means_ref_df, means_query_df (genes x types mean matrices)
+
+    Examples
+    --------
+    Basic usage:
+
+    >>> import scbiot as scb
+    >>> fig, ax, corr_df, means_ref, means_query = (
+    ...     scb.pl.celltype_predtype_mean_corr_heatmap(adata_ref, adata_query)
+    ... )
     """
     # Import matplotlib lazily to avoid import-time backend issues for non-plot users.
     import matplotlib.pyplot as plt

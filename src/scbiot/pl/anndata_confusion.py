@@ -75,6 +75,13 @@ def plot_anndata_confusion(
     Returns
     -------
     (fig, ax) or (fig, ax, counts_df, norm_df)
+
+    Examples
+    --------
+    Basic usage:
+
+    >>> import scbiot as scb
+    >>> fig, ax = scb.pl.plot_anndata_confusion(adata, "true_cell_type", "pred_cell_type")
     """
     if not hasattr(adata, "obs"):
         raise TypeError("`adata` must have an `.obs` attribute (pandas DataFrame).")
