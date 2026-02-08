@@ -1,4 +1,4 @@
-﻿scbiot.ot.integrate\_centroids
+scbiot.ot.integrate\_centroids
 ==============================
 
 .. currentmodule:: scbiot.ot

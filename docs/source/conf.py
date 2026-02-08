@@ -39,7 +39,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
-    'myst_parser',
+    # 'myst_parser',
     'myst_nb',
     'sphinx_copybutton',
     'sphinx_design',
