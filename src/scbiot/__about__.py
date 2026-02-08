@@ -6,7 +6,7 @@ from typing import Tuple
 
 __all__ = ["__version__", "__version_info__"]
 
-__version__ = "1.1.5"
+__version__ = "1.1.6"
 
 
 def _parse_version(version: str) -> Tuple[int | str, ...]:

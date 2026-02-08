@@ -245,10 +245,10 @@ _MODALITY_PRESETS: Dict[str, Preset] = {
 }
 
 
-def get_modality_preset(modality: str) -> Preset:
-    key = modality.lower()
+def get_modality_preset(preset: str) -> Preset:
+    key = preset.lower()
     try:
         return _MODALITY_PRESETS[key]
     except KeyError as exc:
         allowed = ", ".join(sorted(_MODALITY_PRESETS))
-        raise ValueError(f"Unknown modality '{modality}'. Available presets: {allowed}") from exc
+        raise ValueError(f"Unknown preset '{preset}'. Available presets: {allowed}") from exc

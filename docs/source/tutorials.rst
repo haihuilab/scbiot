@@ -1,16 +1,23 @@
+scBIOT
+---------------
 
-The notebooks showcase end-to-end workflows for preprocessing, model training,
-and evaluation across scRNA-seq, scATAC-seq, and multi-omics data. They mirror
-the Scanpy/Read the Docs layout with short landing pages, clear menus, and
-runnable code snippets. All notebooks live in ``examples/`` and can be opened
-locally or in any Jupyter environment.
+**scBIOT** is a lightweight Python library for single-cell omics integration. 
+It bundles the preprocessing, embedding, transfer label workflows we routinely apply to RNA, ATAC, 
+and paired or unpaired multi-omics datasets. The library emphasizes reproducible data preparation, 
+single-cell clustering using embeddings derived from optimal transport and Transformer-based VAEs, 
+and concise APIs that work out of the box on AnnData data.
 
-.. note::
+Highlights
+---------------
 
-   Each tutorial page now renders the corresponding ``examples/*.ipynb``
-   directly via MyST-NB so the docs always show the latest outputs when you run
-   ``make -C docs html`` (the build installs ``scbiot`` and executes every
-   notebook, failing on any execution errors).
+   - **Batteries-included preprocessing**: scATAC-seq peak processing, iterative LSI, and gene activity annotation.
+   - **Accurate atlas integration**: high-fidelity alignment with rare cell-type protection.
+   - **Unified scBIOT framework**: a single framework for embedding RNA, ATAC, transfer learning, and paired or unpaired multi-omics.
+   - **Fast integration via Optimal Transport (OT)**: scalable alignment for large single-cell datasets.
+   - **Transformer-VAE**: further enhanced integration for stronger representation learning and improved robustness.
+   - **Scales to 100M cells locally**: memory-efficent scalable processing.
+   - **Label transfer**: across multi-omics modalities and between spatial data and scRNA-seq references.
+
 
 Getting started
 ---------------
@@ -29,6 +36,7 @@ repository root:
    tutorials/1_scrna_seq
    tutorials/2_scrna_seq_r
    tutorials/3_scatac_seq
+   tutorials/4_paired_multiomics
    tutorials/5_unpaired_multiomics
    tutorials/6_integrate_centroid_level
    tutorials/7_brain_1.3M_integration

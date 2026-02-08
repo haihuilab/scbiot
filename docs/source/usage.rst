@@ -38,7 +38,7 @@ Prepare AnnData for model training and store the latent representation:
 
 .. code-block:: python
 
-    scb.pp.setup_anndata(
+    scb.models.setup_anndata(
         adata,
         var_key="X_ot",
         batch_key="batch",

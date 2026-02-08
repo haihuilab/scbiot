@@ -40,7 +40,7 @@ def integrate_ot(
     obsm_key: str = "X_pca",
     batch_key: str = "batch",
     out_key: str = "scBIOT",
-    modality: Literal["rna", "atac", "supervised", "anchor"] | None = None,
+    preset: Literal["rna", "atac", "supervised", "anchor"] | None = None,
     approximate_ot: bool = False,
     K_ref: int = 1024,
     K_batch: int = 512,
@@ -110,7 +110,7 @@ def integrate_ot(
         ``adata.obs`` column containing batch identities.
     out_key
         Destination key in ``adata.obsm`` for the corrected coordinates.
-    modality
+    preset
         Default settings used for integration of scRNA-seq ("rna"), supervised ("supervised"),
         snATAC-seq ("atac"), multiomics ("anchor").
     approximate_ot
@@ -411,7 +411,7 @@ def integrate_ot(
         adata.uns["_supbiot"] = {
             "batch_key": batch_key,
             "rep_key": out_key,
-            "modality": modality,
+            "preset": preset,
             "label_key": label_key,
             "unlabeled_category": unlabeled_category,
         }
@@ -809,7 +809,7 @@ def integrate_ot(
     adata.uns["_supbiot"] = {
         "batch_key": batch_key,
         "rep_key": out_key,
-        "modality": modality,
+        "preset": preset,
         "label_key": label_key,
         "unlabeled_category": unlabeled_category,
     }

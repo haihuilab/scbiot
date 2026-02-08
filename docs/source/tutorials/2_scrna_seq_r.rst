@@ -84,7 +84,7 @@ clustering:
 
     res <- scb$ot$integrate(
       adata,
-      modality = "rna",
+      preset = "rna",
       obsm_key = "X_pca",
       batch_key = "stim",  # point this at your batch/condition column
       out_key = "X_ot",

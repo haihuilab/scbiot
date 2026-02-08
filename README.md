@@ -62,7 +62,7 @@ sc.pp.neighbors(adata, use_rep='X_ot')
 sc.tl.umap(adata)
 sc.tl.leiden(adata, resolution=0.8, key_added='leiden_X_ot')
 
-scb.pp.setup_anndata(adata, var_key='X_ot', batch_key='batch', true_key=None)
+scb.models.setup_anndata(adata, var_key='X_ot', batch_key='batch', true_key=None)
 model = scb.models.vae(adata, verbose=True)
 model.train()
 
@@ -144,7 +144,7 @@ sc.tl.umap(adata)
 sc.tl.leiden(adata, resolution=0.02, key_added='leiden_X_ot')
 
 # Model training
-scb.pp.setup_anndata(adata, var_key='X_ot', batch_key='batchname_all', true_key=None)
+scb.models.setup_anndata(adata, var_key='X_ot', batch_key='batchname_all', true_key=None)
 model = scb.models.vae(adata, prior_pcr=5., verbose=True)
 model.train()
 SCBIOT_LATENT_KEY = "scBIOT"

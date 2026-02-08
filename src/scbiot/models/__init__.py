@@ -16,6 +16,7 @@ from .vae_train import (
     HyperParams,
     VAEModel,
 )
+from ..pp.setup_anndata import setup_anndata as _setup_anndata
 
 if TYPE_CHECKING:
     from anndata import AnnData
@@ -69,12 +70,16 @@ def vae(
     Basic usage:
 
     >>> import scbiot as scb
-    >>> model = scb.models.vae(
-    ...     adata,
-    ...     num_layers=2,
-    ...     var_key="scBIOT_OT",
-    ...     batch_key="batch",
-    ... )
+    # Prepare pseudo labels
+    >>> sc.pp.neighbors(adata, use_rep='X_ot')        
+    >>> sc.tl.umap(adata)        
+    >>> sc.tl.leiden(adata, resolution=0.8, key_added='leiden_X_ot')
+    >>> scb.models.setup_anndata(adata, var_key='X_ot', batch_key='batch', pseudo_key='leiden_X_ot') 
+    >>> model = scb.models.vae(adata, verbose=True)
+    >>> model.train()
+    >>> SCBIOT_LATENT_KEY = "scBIOT"
+    >>> adata.obsm[SCBIOT_LATENT_KEY] = model.get_latent_representation(n_components=50, svd_solver='arpack', random_state=42)
+    
     """
     raw = _raw
     if raw is None:
@@ -129,4 +134,26 @@ def vae(
     )
 
 
-__all__ = ["VAE", "VAEModel", "vae"]
+def setup_anndata(
+    adata: AnnData,
+    *,
+    var_key: str = "scBIOT_OT",
+    batch_key: str = "batch",
+    pseudo_key: str | None = "leiden_scBIOT_OT",
+    true_key: str | None = None,
+    overwrite: bool = False,
+) -> dict[str, str | None]:
+    return _setup_anndata(
+        adata,
+        var_key=var_key,
+        batch_key=batch_key,
+        pseudo_key=pseudo_key,
+        true_key=true_key,
+        overwrite=overwrite,
+    )
+
+
+setup_anndata.__doc__ = _setup_anndata.__doc__
+
+
+__all__ = ["VAE", "VAEModel", "vae", "setup_anndata"]

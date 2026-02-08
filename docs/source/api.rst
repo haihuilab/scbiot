@@ -13,7 +13,7 @@ OT integration and label transfer
    :toctree: generated
    :nosignatures:
 
-   integrate  
+   integrate_ot  
    supbiot
 
 

@@ -12,9 +12,9 @@ import scbiot.ot as ot
 def test_integrate_default_backward_compatibility(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: dict[str, object] = {}
 
-    def fake_integrate_ot(adata: object, modality: str | None = None, **kwargs: object):
+    def fake_integrate_ot(adata: object, preset: str | None = None, **kwargs: object):
         calls["adata"] = adata
-        calls["modality"] = modality
+        calls["preset"] = preset
         calls["kwargs"] = kwargs
         return adata, {"mix": 0.1}
 
@@ -25,7 +25,7 @@ def test_integrate_default_backward_compatibility(monkeypatch: pytest.MonkeyPatc
 
     assert out_adata is adata
     assert metrics == {"mix": 0.1}
-    assert calls["modality"] == "rna"
+    assert calls["preset"] == "rna"
     assert "approximate_ot" not in calls["kwargs"]
     assert "centroid_ot" not in calls["kwargs"]
 
@@ -33,9 +33,9 @@ def test_integrate_default_backward_compatibility(monkeypatch: pytest.MonkeyPatc
 def test_integrate_centroid_preset_routes_to_centroids(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: dict[str, object] = {}
 
-    def fake_integrate_centroids(adata: object, modality: str | None = None, **kwargs: object):
+    def fake_integrate_centroids(adata: object, preset: str | None = None, **kwargs: object):
         calls["adata"] = adata
-        calls["modality"] = modality
+        calls["preset"] = preset
         calls["kwargs"] = kwargs
         return adata, {"n_centroids": 12}
 
@@ -51,14 +51,14 @@ def test_integrate_centroid_preset_routes_to_centroids(monkeypatch: pytest.Monke
 
     assert out_adata is adata
     assert metrics["n_centroids"] == 12
-    assert calls["modality"] is None
+    assert calls["preset"] is None
 
 
 def test_integrate_centroid_flag_routes_to_centroids(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: dict[str, object] = {}
 
-    def fake_integrate_centroids(adata: object, modality: str | None = None, **kwargs: object):
-        calls["modality"] = modality
+    def fake_integrate_centroids(adata: object, preset: str | None = None, **kwargs: object):
+        calls["preset"] = preset
         calls["kwargs"] = kwargs
         return adata, {"n_centroids": 4}
 
@@ -67,7 +67,7 @@ def test_integrate_centroid_flag_routes_to_centroids(monkeypatch: pytest.MonkeyP
     adata = object()
     ot.integrate(adata, preset="anchor", centroid_ot=True)
 
-    assert calls["modality"] == "anchor"
+    assert calls["preset"] == "anchor"
     assert calls["kwargs"]["n_centroids_per_batch"] == 2048
     assert calls["kwargs"]["max_samples_per_batch"] == 500_000
 
@@ -75,8 +75,8 @@ def test_integrate_centroid_flag_routes_to_centroids(monkeypatch: pytest.MonkeyP
 def test_integrate_approximate_ot_uses_approximate_solver(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: dict[str, object] = {}
 
-    def fake_integrate_ot(adata: object, modality: str | None = None, **kwargs: object):
-        calls["modality"] = modality
+    def fake_integrate_ot(adata: object, preset: str | None = None, **kwargs: object):
+        calls["preset"] = preset
         calls["kwargs"] = kwargs
         return adata, {"mix": 0.2}
 
@@ -85,7 +85,7 @@ def test_integrate_approximate_ot_uses_approximate_solver(monkeypatch: pytest.Mo
     adata = object()
     ot.integrate(adata, preset="atac", approximate_ot=True)
 
-    assert calls["modality"] == "atac"
+    assert calls["preset"] == "atac"
     assert calls["kwargs"]["obsm_key"] == "X_lsi"
     assert calls["kwargs"]["batch_key"] == "batchname_all"
     assert calls["kwargs"]["reference"] == "largest"
@@ -101,7 +101,7 @@ def test_integrate_mutual_exclusivity() -> None:
 def test_anchor_reference_category_sets_reference_align(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: dict[str, object] = {}
 
-    def fake_integrate_ot(adata: object, modality: str | None = None, **kwargs: object):
+    def fake_integrate_ot(adata: object, preset: str | None = None, **kwargs: object):
         calls["kwargs"] = kwargs
         return adata, {}
 
@@ -124,7 +124,7 @@ def test_anchor_reference_category_approximate_sets_reference_align(
 ) -> None:
     calls: dict[str, object] = {}
 
-    def fake_integrate_ot(adata: object, modality: str | None = None, **kwargs: object):
+    def fake_integrate_ot(adata: object, preset: str | None = None, **kwargs: object):
         calls["kwargs"] = kwargs
         return adata, {}
 

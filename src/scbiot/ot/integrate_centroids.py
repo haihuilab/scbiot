@@ -30,7 +30,7 @@ def integrate_centroids(
     use_gpu: bool = True,
     gpu_device: int = 0,
     tmp_path: Optional[str] = None,   # if not None -> write output to a memmap file
-    modality: Optional[str] = None,
+    preset: Optional[str] = None,
     **integrate_kwargs: Any,
 ) -> Tuple[Any, Dict[str, float | int]]:
     """
@@ -64,7 +64,7 @@ def integrate_centroids(
     tmp_path
         If provided, the full integrated embedding is stored as a memmap file at this path
         to limit peak RAM usage. If None, a regular in-memory numpy array is used.
-    modality
+    preset
         Optional OT preset ("rna", "supervised", "atac", or "anchor") to initialize OT
         hyper-parameters. Use ``"centroid"`` to keep centroid defaults while relying on
         explicit OT keyword arguments.
@@ -77,30 +77,17 @@ def integrate_centroids(
         The same AnnData, with integrated coordinates stored in `adata_full.obsm[out_key]`.
     metrics
         Metrics dictionary returned by `integrate_ot`, augmented with `n_centroids`.
-
-    Examples
-    --------
-    Basic usage:
-
-    >>> import scbiot as scb
-    >>> adata, metrics = scb.ot.integrate_centroids(
-    ...     adata,
-    ...     obsm_key="X_pca",
-    ...     batch_key="batch",
-    ...     out_key="X_ot",
-    ...     n_centroids_per_batch=2048,
-    ... )
     """
-    if modality is not None:
-        modality_norm = str(modality).lower()
-        if modality_norm == "paired":
+    if preset is not None:
+        preset_norm = str(preset).lower()
+        if preset_norm == "paired":
             raise ValueError(
                 "integrate_centroids supports presets rna, supervised, atac, or anchor (paired not supported)."
             )
-        if modality_norm == "centroid":
+        if preset_norm == "centroid":
             preset_kwargs = {}
         else:
-            preset_kwargs = dict(get_modality_preset(modality_norm))
+            preset_kwargs = dict(get_modality_preset(preset_norm))
     else:
         preset_kwargs = {}
     ot_kwargs: Dict[str, Any] = {**preset_kwargs, **integrate_kwargs}

@@ -2591,6 +2591,7 @@ dependencies = [
     { name = "scikit-misc" },
     { name = "scimorph" },
     { name = "scvi-tools" },
+    { name = "spatialdata", extra = ["torch"] },
     { name = "spatialdata-io" },
     { name = "squidpy" },
     { name = "torch" },
@@ -2681,6 +2682,7 @@ requires-dist = [
     { name = "scikit-misc", specifier = ">=0.5.2" },
     { name = "scimorph", specifier = ">=1.0.3" },
     { name = "scvi-tools", specifier = ">=1.3.3" },
+    { name = "spatialdata", extras = ["torch"], specifier = ">=0.4.0" },
     { name = "spatialdata-io", specifier = ">=0.3.0" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=9.1,<10" },
     { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = ">=3.1" },
@@ -3043,6 +3045,11 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f9/97/b841c596198152444ead8efc194444beac3031e2f9fb9fd0f2ca26d3c5f3/spatialdata-0.4.0.tar.gz", hash = "sha256:6c7d1abf366fd5e61e9c9b489d04ad644a9609489588fa3436e59f4c96b67846", size = 323151, upload-time = "2025-04-21T18:43:32.958Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/14/96/015832d04de478b5ccf089fd259bff58adcff195cf27fec29b2bed307a46/spatialdata-0.4.0-py3-none-any.whl", hash = "sha256:f0a3f76efda57a221a775686a4d376093bfea560492697f40820eb3ec6d6ea89", size = 183579, upload-time = "2025-04-21T18:43:31.521Z" },
+]
+
+[package.optional-dependencies]
+torch = [
+    { name = "torch" },
 ]
 
 [[package]]

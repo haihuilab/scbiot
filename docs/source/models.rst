@@ -1,5 +1,5 @@
 
-Model utilities
+Models: ``models``
 -----------------
 
 .. currentmodule:: scbiot.models

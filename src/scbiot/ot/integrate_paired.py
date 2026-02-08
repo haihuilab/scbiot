@@ -267,19 +267,6 @@ def integrate_paired(
         Print progress information when ``True``.
     use_gpu / gpu_device / ot_backend
         OT backend controls (Torch or POT).
-
-    Examples
-    --------
-    Basic usage:
-
-    >>> import scbiot as scb
-    >>> adata, metrics = scb.ot.integrate_paired(
-    ...     adata,
-    ...     obsm_key="X_pca",
-    ...     view_key="X_lsi",
-    ...     batch_key="batch",
-    ...     out_key="X_ot",
-    ... )
     """
     if approximate_ot and centroid_ot:
         raise ValueError("integrate_paired received both approximate_ot and centroid_ot; enable only one.")

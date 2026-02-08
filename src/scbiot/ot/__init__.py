@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from inspect import signature
-import warnings
 from typing import Any, Optional, Literal, Sequence
 from .integrate import integrate_ot
 from .integrate_centroids import integrate_centroids
@@ -99,12 +98,10 @@ def integrate(
         Destination key in ``adata.obsm`` for the corrected coordinates.
     preset
         Default settings used for integration of scRNA-seq ("rna"), supervised ("supervised"),
-        snATAC-seq ("atac"), spatial ("spatial"), matched RNA/ATAC multiomics ("paired"), 
-        multiomics for unpaired workflows ("anchor"), or centroid OT ("centroid"). For
+        snATAC-seq ("atac"), spatial ("spatial"), multiomics for unpaired workflows ("anchor"),
+        matched RNA/ATAC multiomics ("paired"), or centroid OT ("centroid"). For
         ``preset=\"paired\"``, provide ``view_key`` plus optional fusion weights
         (``w_base``, ``w_view``) and pairing prior controls (``prior_strength``, ``diag_mass``).
-        Defaults shown in the signature are example values for ``preset="rna"``;
-        other presets override many parameters.
     K_ref / K_batch
         Reference and batch-specific prototype sizes used for OT coupling.
     reg / reg_m
@@ -175,19 +172,6 @@ def integrate(
     Notes
     -----
     The function updates ``adata`` in place and also returns it for convenience.
-
-    Examples
-    --------
-    Basic usage:
-
-    >>> import scbiot as scb
-    >>> adata, metrics = scb.ot.integrate(
-    ...     adata,
-    ...     preset="rna",
-    ...     obsm_key="X_pca",
-    ...     batch_key="batch",
-    ...     out_key="X_ot",
-    ... )
     """
     # Collect user-specified args, then layer: preset < args < overrides
     _args = dict(locals())
@@ -208,17 +192,7 @@ def integrate(
 
     preset_value = _args.pop("preset")
     if preset_value is _UNSET:
-        if "modality" in overrides:
-            preset_value = overrides.pop("modality")
-            warnings.warn(
-                "`modality` is deprecated; use `preset` instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-        else:
-            preset_value = "rna"
-    elif "modality" in overrides:
-        raise TypeError("integrate() got multiple values for 'preset' (old name 'modality' also provided)")
+        preset_value = "rna"
 
     mode = str(preset_value).lower()
     if centroid_ot and approximate_ot:
@@ -260,33 +234,12 @@ def integrate(
     if effective_centroid:
         params.pop("mode", None)
         centroid_mode = None if mode == "centroid" else mode
-        return integrate_centroids(adata, modality=centroid_mode, **params)
+        return integrate_centroids(adata, preset=centroid_mode, **params)
     if mode == "paired":
         paired_kwargs = {k: params[k] for k in _PAIRED_ARG_KEYS if k in params}
         return integrate_paired(adata, **paired_kwargs)
     params.pop("mode", None)
-    return integrate_ot(adata, modality=mode, **params)
-
-
-def _integrate_example_signature():
-    example_defaults: dict[str, Any] = {}
-    for name, param in signature(integrate_ot).parameters.items():
-        if param.default is not param.empty:
-            example_defaults[name] = param.default
-    example_defaults.update(_get_modality_preset("rna"))
-    example_defaults.setdefault("preset", "rna")
-    example_defaults.setdefault("reference_category", None)
-    sig = signature(integrate)
-    params = []
-    for param in sig.parameters.values():
-        if param.default is _UNSET:
-            params.append(param.replace(default=example_defaults.get(param.name, None)))
-        else:
-            params.append(param)
-    return sig.replace(parameters=params)
-
-
-integrate.__signature__ = _integrate_example_signature()
+    return integrate_ot(adata, preset=mode, **params)
 
 
 def supbiot(
@@ -351,16 +304,30 @@ def supbiot(
     Any
         Updated ``adata`` (in place) or a joint AnnData when ``inplace=False``.
 
+
     Examples
     --------
     Basic usage:
 
     >>> import scbiot as scb
+    >>> adata, metrics = scb.ot.integrate(
+    ...     adata,
+    ...     preset='anchor',
+    ...     obsm_key="X_pca",
+    ...     batch_key="batch",    
+    ...     out_key="X_supbiot",    
+    ...     label_key="cell_type",
+    ...     unlabeled_category="Unknown"    
+    )
     >>> adata = scb.ot.supbiot(
     ...     adata,
     ...     label_key="cell_type",
-    ...     unlabeled_category="unknown",
-    ... )
+    ...     unlabeled_category="Unknown",
+    ...     pred_label_key='pred_cell_type',
+    ...     pred_conf_key="pred_confidence",
+    ...     min_conf=0.25
+    )
+    >>> sc.pl.violin(adata_query, keys="pred_confidence", groupby="pred_cell_type", rotation=90)
     """
     if use_rep is not None:
         if out_key is not None and use_rep != out_key:
