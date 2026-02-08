@@ -11,6 +11,8 @@ python:
       path: .
       extra_requirements:
         - docs
+      pip_install_args:
+        - --no-deps
     - requirements: docs/requirements.txt
 
 sphinx:
