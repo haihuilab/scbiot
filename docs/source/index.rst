@@ -13,7 +13,7 @@ Highlights
 ----------
 
 * Fast optimal transport with GPU.
-* A unified `scBIOT` models that can embed RNA, ATAC, or multi-omics modalities.
+* A unified `scBIOT` framework that can embed RNA, ATAC, or multi-omics modalities.
 * Supports scRNA-seq, snATAC-seq, and paired and unpaired multi-omics.
 * Supports label transfer across disjoint datasets, such as scRNA-seq to Xenium, scRNA-seq to snATAC-seq.
 * Built-in preprocessing steps (iterative LSI, gene activity annotation from peaks, coembedding of PCA from multiomics).
@@ -46,7 +46,6 @@ Highlights
 
    api
    ot
-   models
    preprocessing   
    plotting
    data_source

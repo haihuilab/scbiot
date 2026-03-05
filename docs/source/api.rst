@@ -1,8 +1,7 @@
 API
 ===
 
-Core public entry points for OT integration and preparing AnnData objects for the
-Transformer VAE.
+Core public entry points for OT integration and label transfer.
 
 OT integration and label transfer
 --------------
@@ -15,6 +14,5 @@ OT integration and label transfer
 
    integrate_ot  
    supbiot
-
 
 

@@ -27,31 +27,8 @@ pipeline. Pass anndata object.
         )
         print(metrics)
 
-    # Generate pseudo-labels for tracking model training
+    # Use OT embeddings for downstream analysis
     sc.pp.neighbors(adata, use_rep='X_ot')
     sc.tl.umap(adata)
     sc.tl.leiden(adata, resolution=0.8, key_added='leiden_X_ot')
     adata
-
-
-Prepare AnnData for model training and store the latent representation:
-
-.. code-block:: python
-
-    scb.models.setup_anndata(
-        adata,
-        var_key="X_ot",
-        batch_key="batch",
-        pseudo_key="leiden_X_ot",
-        true_key=None,
-    )
-
-    model = scb.models.vae(adata, verbose=True)
-    model.train()
-    SCBIOT_LATENT_KEY = "scBIOT"
-    adata.obsm[SCBIOT_LATENT_KEY] = model.get_latent_representation(
-        n_compoents=50,
-        svd_solver="arpack",
-        random_state=42,
-    )
-
