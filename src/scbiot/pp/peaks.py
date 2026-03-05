@@ -245,12 +245,12 @@ def remove_promoter_proximal_peaks(
 
 def find_variable_features(
     adata: AnnData,
-    batch_key: str,
+    batch_key: Optional[str] = None,
     layer: str = "counts",
     per_batch_min_frac: float = 0.01,
-    topN: int = 30000,
+    topN: int = 3000000,
     set_var_flag: Optional[str] = None,
-    normalize_output: bool = True,
+    normalize_output: bool = False,
     idf_alpha: float = 1.0,
     hetero_gamma: float = 2.0,
     layer_out: str = "X",
@@ -260,7 +260,15 @@ def find_variable_features(
     X = X if sp.issparse(X) else sp.csr_matrix(X)
 
     n_cells, n_feats = X.shape
-    batch_vals = adata.obs[batch_key].values
+    if batch_key is None:
+        batch_vals = np.zeros(n_cells, dtype=np.int8)
+    else:
+        if batch_key not in adata.obs:
+            raise KeyError(
+                f"Missing batch_key '{batch_key}' in adata.obs. "
+                "Set batch_key=None to disable per-batch filtering."
+            )
+        batch_vals = adata.obs[batch_key].values
     batch_cats = np.unique(batch_vals)
 
     common_mask = np.ones(n_feats, dtype=bool)
@@ -370,9 +378,9 @@ def tfidf_transform(
 
 def lsi_transform(
     adata: AnnData,
-    n_components: int = 31,
-    n_iter: int = 5,
-    topN: int = 30000,
+    n_components: int = 51,
+    n_iter: int = 2,
+    topN: int = 50000,
     layer: str = "counts",
     drop_first_component: bool = True,
     random_state: int = 42,
@@ -381,7 +389,7 @@ def lsi_transform(
     add_key: str = "X_lsi",
     # ---- Existing kwargs preserved ----
     sample_cells_pre: Optional[int] = 10000,             # Technique 1 (fit on subset)
-    per_cluster_union: bool = True,                    # Technique 4 (off by default)
+    per_cluster_union: bool = False,                   # Technique 4 (off by default)
     per_cluster_top: Optional[int] = 4000,              # Technique 4 control
     outlier_quantiles: Optional[Tuple[float, float]] = (0.02, 0.98),  # Technique 5 (e.g., (0.02, 0.98))
 ) -> np.ndarray:
@@ -401,7 +409,7 @@ def lsi_transform(
 
         # --- TF on current feature subset ---
         tf = X_use.copy()
-        inplace_csr_row_normalize_l1(tf)
+        inplace_csr_row_normalize_l1(tf)        
 
         # Optional winsorization on TF (clip before IDF)
         if outlier_quantiles is not None:
@@ -422,10 +430,11 @@ def lsi_transform(
             random_state=random_state,
         )
 
-        if normalize_output:
-            X_lsi = sk_normalize(X_lsi, norm="l2", copy=False)
         if drop_first_component and X_lsi.shape[1] > 1:
             X_lsi = X_lsi[:, 1:]
+
+        if normalize_output:
+            X_lsi = sk_normalize(X_lsi, norm="l2", copy=False)        
 
         adata.obsm[f"{add_key}_iter{j}"] = X_lsi
 
@@ -475,6 +484,7 @@ def add_iterative_lsi(
     drop_first_component: bool = True,
     tfidf_layer: str = "tfidf",
     add_key: str = "X_lsi",
+    outlier_quantiles: Optional[Tuple[float, float]] = (0.02, 0.98),
     **lsi_kwargs: Any,
 ) -> np.ndarray:
     """
@@ -492,6 +502,8 @@ def add_iterative_lsi(
         Ignored; retained for backward compatibility.
     add_key:
         Key in ``adata.obsm`` to store the LSI embedding.
+    outlier_quantiles:
+        Quantiles for winsorizing TF values before IDF scaling. Set to ``None`` to disable.
     **lsi_kwargs:
         Additional keyword arguments forwarded to ``lsi_transform`` (for example,
         ``n_iter``, ``topN``, ``layer``, ``per_cluster_union``).
@@ -510,8 +522,9 @@ def add_iterative_lsi(
     Basic usage:
 
     >>> import scbiot as scb
+    # Removed promoter-proximal peaks
     >>> adata_top = scb.pp.remove_promoter_proximal_peaks(adata, f"{dir}/inputs/gencode.vM25.chr_patch_hapl_scaff.annotation.gtf.gz")    
-    # Peak selection
+    # High variable peak selection
     >>> scb.pp.find_variable_features(adata_top, batch_key="batchname_all")    
     # TF-IDF
     >>> scb.pp.add_iterative_lsi(adata_top, n_components=31, n_iter=2, drop_first_component=True, add_key="X_lsi")
@@ -526,6 +539,7 @@ def add_iterative_lsi(
         n_components=n_components,
         drop_first_component=drop_first_component,
         add_key=add_key,
+        outlier_quantiles=outlier_quantiles,
         **lsi_kwargs,
     )
 
@@ -837,7 +851,7 @@ def create_gene_activity(
     promoter_down: int = 500,
 
     # variable peak selection
-    batch_key: str = "batch",
+    batch_key: Optional[str] = None,
     top_peaks: int = 30_000,
     var_features_key: str = "var_features",
     normalize_var_features_output: bool = False,
@@ -884,7 +898,8 @@ def create_gene_activity(
     promoter_up / promoter_down:
         TSS window (bp) used for promoter definition.
     batch_key:
-        ``atac.obs`` column used when selecting variable peaks.
+        ``atac.obs`` column used when selecting variable peaks. Set to ``None`` to
+        skip per-batch filtering.
     top_peaks:
         Number of variable peaks to retain.
     var_features_key:

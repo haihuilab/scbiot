@@ -136,3 +136,160 @@ def _coral_prealign(
         out[idx, apply_dims] = Xs_aligned.astype(out.dtype, copy=False)
 
     return out
+
+
+def _shrink_covariance(C: np.ndarray, shrinkage: float) -> np.ndarray:
+    if shrinkage <= 0.0:
+        return C
+    d = C.shape[0]
+    trace = float(np.trace(C))
+    if trace <= 0.0:
+        return C
+    mu = trace / float(d)
+    return (1.0 - shrinkage) * C + float(shrinkage) * mu * np.eye(d, dtype=C.dtype)
+
+
+def _bures_barycenter_cov(
+    covs: list[np.ndarray],
+    weights: np.ndarray,
+    iters: int,
+    eps: float,
+) -> np.ndarray:
+    w = np.asarray(weights, dtype=np.float64)
+    w_sum = float(w.sum())
+    if w_sum <= 0.0:
+        w = np.full(len(covs), 1.0 / max(1, len(covs)), dtype=np.float64)
+    else:
+        w = w / w_sum
+
+    C_bar = np.zeros_like(covs[0], dtype=np.float64)
+    for wi, Ci in zip(w, covs):
+        C_bar += float(wi) * Ci
+
+    for _ in range(int(max(1, iters))):
+        C_sqrt = _sqrtm_psd(C_bar)
+        T = np.zeros_like(C_bar, dtype=np.float64)
+        for wi, Ci in zip(w, covs):
+            inner = C_sqrt @ Ci @ C_sqrt
+            T += float(wi) * _sqrtm_psd(inner)
+        C_bar = (T + T.T) * 0.5
+        if eps > 0:
+            C_bar = C_bar + float(eps) * np.eye(C_bar.shape[0], dtype=C_bar.dtype)
+    return C_bar
+
+
+def _gaussian_ot_map_matrix(Cs: np.ndarray, Ct: np.ndarray) -> np.ndarray:
+    Cs_sqrt = _sqrtm_psd(Cs)
+    Cs_invsqrt = _invsqrtm_psd(Cs)
+    inner = Cs_sqrt @ Ct @ Cs_sqrt
+    middle = _sqrtm_psd(inner)
+    return Cs_invsqrt @ middle @ Cs_invsqrt
+
+
+def _ot_prealign(
+    X: np.ndarray,
+    b: np.ndarray,
+    ref_label_enc: int,
+    ref_mode: str,
+    strength: float = 1.0,
+    eps: float = 1e-3,
+    max_points: int = 20000,
+    seed: int = 0,
+    target: str = "auto",          # "auto"|"reference"|"global"
+    apply_dims: Optional[slice] = None,
+    shrinkage: float = 0.05,
+    bary_iters: int = 6,
+) -> np.ndarray:
+    """
+    Pre-align batches with Gaussian OT barycenter matching (Bures) for overlap.
+
+    target:
+      - "reference": align all non-ref batches to ref batch (largest)
+      - "global": align each batch to a Gaussian barycenter
+      - "auto": if ref_mode=="union" -> global, else -> reference
+    """
+    s = float(np.clip(strength, 0.0, 1.0))
+    if s <= 0.0:
+        return X
+
+    Xf = _as_nd_f32_c(X)
+    out = Xf.copy()
+
+    if apply_dims is None:
+        apply_dims = slice(0, Xf.shape[1])
+
+    X_sub = Xf[:, apply_dims]
+    target_norm = str(target).lower()
+    if target_norm == "auto":
+        target_norm = "global" if str(ref_mode).lower() == "union" else "reference"
+
+    stats: dict[int, tuple[np.ndarray, np.ndarray, int]] = {}
+    for lbl in np.unique(b):
+        lbl = int(lbl)
+        idx = np.where(b == lbl)[0]
+        if idx.size == 0:
+            continue
+        Xb = X_sub[idx]
+        Xb_sub = _subsample_rows(Xb, max_points=max_points, seed=seed + 31 + lbl)
+        if Xb_sub.shape[0] <= 1:
+            continue
+        Xb64 = np.asarray(Xb_sub, dtype=np.float64, order="C")
+        mu = Xb64.mean(0, keepdims=True)
+        C = _cov_psd(Xb64, eps=eps)
+        C = _shrink_covariance(C, shrinkage=shrinkage)
+        stats[lbl] = (mu, C, int(idx.size))
+
+    if not stats:
+        return Xf
+
+    if target_norm == "reference":
+        ref_stats = stats.get(int(ref_label_enc))
+        if ref_stats is None:
+            return Xf
+        mu_t, Ct, _ = ref_stats
+    elif target_norm == "global":
+        covs = []
+        weights = []
+        mu_acc = None
+        w_sum = 0.0
+        for lbl, (mu_i, C_i, n_i) in stats.items():
+            covs.append(C_i)
+            weights.append(float(n_i))
+            if mu_acc is None:
+                mu_acc = float(n_i) * mu_i
+            else:
+                mu_acc += float(n_i) * mu_i
+            w_sum += float(n_i)
+        if mu_acc is None or w_sum <= 0.0:
+            return Xf
+        mu_t = mu_acc / w_sum
+        if len(covs) == 1:
+            Ct = covs[0]
+        else:
+            Ct = _bures_barycenter_cov(covs, np.asarray(weights), iters=bary_iters, eps=eps)
+    else:
+        raise ValueError(f"target must be 'auto'|'reference'|'global' (got {target!r})")
+
+    # transform each batch
+    for lbl in np.unique(b):
+        lbl = int(lbl)
+        idx = np.where(b == lbl)[0]
+        if idx.size == 0:
+            continue
+        if target_norm == "reference" and lbl == int(ref_label_enc):
+            continue
+        stat = stats.get(lbl)
+        if stat is None:
+            continue
+        mu_s, Cs, _ = stat
+        A = _gaussian_ot_map_matrix(Cs, Ct)
+
+        Xs = X_sub[idx]
+        Xs64 = np.asarray(Xs, dtype=np.float64, order="C")
+        Xs_aligned = (Xs64 - mu_s) @ A + mu_t
+        if s < 1.0:
+            Xs_aligned = (1.0 - s) * Xs + s * Xs_aligned
+
+        out[idx, apply_dims] = Xs_aligned.astype(out.dtype, copy=False)
+
+    return out

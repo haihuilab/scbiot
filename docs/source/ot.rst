@@ -17,6 +17,24 @@ For a basic scRNA-seq dataset integration:
        batch_key="batch",
        out_key="X_ot"       
    )
+
+For stable tuning, use the meta-parameter interface:
+
+.. code-block:: python
+
+   adata, metrics = scb.ot.integrate(
+       adata,
+       preset="rna",
+       epsilon=0.03,
+       tau=0.40,
+       knn_scale=1.0,
+       batch_strength=1.0,
+       gate_temperature=1.0,
+       # optional supervision:
+       label_key="semi_cell_type",
+       unlabeled_category="Unknown",
+       sup_strength=0.10,
+   )
    
 
 For unpaired RNA/ATAC workflows, compute a shared PCA with ``pp.coembed_pca`` and
@@ -87,10 +105,4 @@ solver while keeping your preset's data keys:
 OT backend controls
 -------------------
 
-All OT entry points share the ``use_gpu``/``gpu_device`` and ``ot_backend``
-knobs. In addition, :func:`scbiot.ot.integrate` (and the modality presets that
-wrap it) now expose an ``ot_mode`` parameter that selects between unbalanced OT
-(``"unbalanced"``, the rare-aware behavior) and balanced OT (``"balanced"``) for
-stronger batch mixing. When you request balanced OT while keeping
-``reference="largest"``, scBIOT automatically switches to the ``union`` reference so
-that every batch can move symmetrically.
+All OT entry points share the ``use_gpu``/``gpu_device`` and ``ot_backend`` knobs.

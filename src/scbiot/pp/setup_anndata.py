@@ -96,7 +96,7 @@ def setup_anndata(
     *,
     var_key: str = "scBIOT_OT",
     batch_key: str = "batch",
-    pseudo_key: str | None = "leiden_scBIOT_OT",
+    pseudo_key: str | None = None,
     true_key: str | None = None,
     overwrite: bool = False,
 ) -> dict[str, str | None]:
@@ -113,7 +113,7 @@ def setup_anndata(
         ``adata.obs`` column that stores batch labels.
     pseudo_key / true_key:
         Optional ``adata.obs`` columns for pseudo and ground-truth labels. Set either to
-        ``None`` to disable that label type (``true_key`` defaults to ``None``).
+        ``None`` to disable that label type.
     overwrite:
         Replace an existing registration in ``adata.uns`` when True.
     """

@@ -294,7 +294,24 @@ class VAEModel:
             n_head=self.n_head, factor=self.factor, bias=self.bias
         ).to(self.device)
 
-        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=WD)
+        proto_dim = self.model.Tokenizer.n_tokens * self.d_token
+        self.proto_head = ProtoHead(
+            d=proto_dim,
+            K=self.num_clusters,
+            tau=self.proto_tau,
+            cosine=True,
+            ema_m=float(self.proto_ema_m),
+        ).to(self.device)
+        self.proto_initialized = False
+
+        self.optimizer = torch.optim.AdamW(
+            [
+                {"params": self.model.parameters()},
+                {"params": self.proto_head.parameters()},
+            ],
+            lr=self.lr,
+            weight_decay=WD,
+        )
         total_steps = self.num_epochs * len(self.train_loader) * 2
         self.training_steps = float(self.training_steps or total_steps)
         self.scheduler = get_cosine_schedule_with_warmup(
@@ -315,8 +332,7 @@ class VAEModel:
         self.train_prob = pd.DataFrame()
         self.test_prob = pd.DataFrame()
 
-        # prototypes created lazily
-        self.proto_head: ProtoHead | None = None
+        # prototype head created here; centroids are initialized on first batch
 
         # Debug summary so we *know* which labels exist and their sizes.
         if self.verbose:
@@ -368,11 +384,9 @@ class VAEModel:
 
                     # ----- prototype clustering -----
                     z1f = self._flatten_z(z1); z2f = self._flatten_z(z2); zc = 0.5 * (z1f + z2f)
-                    if self.proto_head is None:
-                        self.proto_head = ProtoHead(d=zc.size(-1), K=self.num_clusters, tau=self.proto_tau,
-                                                    cosine=True, ema_m=float(self.proto_ema_m)).to(self.device)
+                    if not self.proto_initialized:
                         self.proto_head.init_from_batch(zc.detach())
-                        self.optimizer.add_param_group({'params': self.proto_head.parameters(), 'lr': self.lr})
+                        self.proto_initialized = True
 
                     logits1 = self.proto_head.logits(z1f)
                     logits2 = self.proto_head.logits(z2f)
@@ -479,7 +493,7 @@ class VAEModel:
 
                 test_proto_loss = torch.zeros(1, device=self.device, dtype=z1.dtype).squeeze()
                 pseudo_test = self.pseudo_test.to(self.device, non_blocking=True)
-                if self.proto_head is not None:
+                if self.proto_initialized:
                     z1f = self._flatten_z(z1)
                     z2f = self._flatten_z(z2)
                     zc  = 0.5 * (z1f + z2f)

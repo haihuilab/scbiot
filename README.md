@@ -75,6 +75,24 @@ sc.tl.leiden(adata, resolution=0.8, key_added=f'leiden_{SCBIOT_LATENT_KEY}')
 
 ```
 
+For stable tuning, use the meta-parameter interface:
+
+```python
+adata, metrics = scb.ot.integrate(
+    adata,
+    preset="rna",
+    epsilon=0.03,
+    tau=0.40,
+    knn_scale=1.0,
+    batch_strength=1.0,
+    gate_temperature=1.0,
+    # optional supervision:
+    label_key="semi_cell_type",
+    unlabeled_category="Unknown",
+    sup_strength=0.10,
+)
+```
+
 ### Scaling options
 
 For ultra-large datasets, use centroid-level OT:

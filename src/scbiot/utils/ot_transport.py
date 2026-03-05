@@ -86,26 +86,57 @@ def _ot_barycentric_gpu(
         return combined, transport
 
     device = _torch_device(use_gpu=(ot_backend == "torch") and use_gpu, gpu_device=gpu_device)
-    Bi64 = np.asarray(Bi, dtype=np.float64, order="C")
-    R64 = np.asarray(R, dtype=np.float64, order="C")
-    M = ot.dist(Bi64, R64, metric="sqeuclidean")
-    M /= (M.std() + 1e-8)
-    if cost_clip_q is not None:
-        thr = np.quantile(M, cost_clip_q, axis=1, keepdims=True)
-        M = np.where(M > thr, thr + clip_big, M)
-
-    a = np.full(Bi.shape[0], 1.0 / max(Bi.shape[0], 1), dtype=np.float64)
-    b = np.full(R.shape[0], 1.0 / max(R.shape[0], 1), dtype=np.float64)
-
     if ot_backend == "torch":
-        M_t = _to_torch(M, device=device, dtype=torch.float64)
-        a_t = _to_torch(a, device=device, dtype=torch.float64)
-        b_t = _to_torch(b, device=device, dtype=torch.float64)
-        tau = reg / (reg + reg_m)
-        u, v, K = _sinkhorn_uot_torch(M_t, a_t, b_t, float(reg), float(tau), iters, tol)
-        T = (u[:, None] * K) * v[None, :]
-        T = T.cpu().numpy()
+        if device.type == "cuda":
+            Bi_t = _to_torch(Bi, device=device, dtype=torch.float64)
+            R_t = _to_torch(R, device=device, dtype=torch.float64)
+            M_t = torch.cdist(Bi_t, R_t, p=2).pow_(2)
+            M_t = M_t / (M_t.std().clamp_min(1e-8))
+            if cost_clip_q is not None:
+                thr = torch.quantile(M_t, q=float(cost_clip_q), dim=1, keepdim=True)
+                M_t = torch.where(M_t > thr, thr + clip_big, M_t)
+
+            a_t = torch.full((Bi_t.shape[0],), 1.0 / max(Bi_t.shape[0], 1), dtype=torch.float64, device=device)
+            b_t = torch.full((R_t.shape[0],), 1.0 / max(R_t.shape[0], 1), dtype=torch.float64, device=device)
+            tau = reg / (reg + reg_m)
+            u, v, K = _sinkhorn_uot_torch(M_t, a_t, b_t, float(reg), float(tau), iters, tol)
+            T_t = (u[:, None] * K) * v[None, :]
+            row_sum_t = T_t.sum(dim=1, keepdim=True).clamp_min(1e-12)
+            out_t = torch.matmul(T_t / row_sum_t, R_t)
+            out = out_t.detach().cpu().numpy().astype(Bi.dtype, copy=False)
+        else:
+            Bi64 = np.asarray(Bi, dtype=np.float64, order="C")
+            R64 = np.asarray(R, dtype=np.float64, order="C")
+            M = ot.dist(Bi64, R64, metric="sqeuclidean")
+            M /= (M.std() + 1e-8)
+            if cost_clip_q is not None:
+                thr = np.quantile(M, cost_clip_q, axis=1, keepdims=True)
+                M = np.where(M > thr, thr + clip_big, M)
+
+            a = np.full(Bi.shape[0], 1.0 / max(Bi.shape[0], 1), dtype=np.float64)
+            b = np.full(R.shape[0], 1.0 / max(R.shape[0], 1), dtype=np.float64)
+            M_t = _to_torch(M, device=device, dtype=torch.float64)
+            a_t = _to_torch(a, device=device, dtype=torch.float64)
+            b_t = _to_torch(b, device=device, dtype=torch.float64)
+            tau = reg / (reg + reg_m)
+            u, v, K = _sinkhorn_uot_torch(M_t, a_t, b_t, float(reg), float(tau), iters, tol)
+            T = (u[:, None] * K) * v[None, :]
+            T = T.cpu().numpy()
+            row_sum = T.sum(1, keepdims=True) + 1e-12
+            Bi_to_R = (T / row_sum) @ R64
+            out = Bi_to_R.astype(Bi.dtype, copy=False)
     else:
+        Bi64 = np.asarray(Bi, dtype=np.float64, order="C")
+        R64 = np.asarray(R, dtype=np.float64, order="C")
+        M = ot.dist(Bi64, R64, metric="sqeuclidean")
+        M /= (M.std() + 1e-8)
+        if cost_clip_q is not None:
+            thr = np.quantile(M, cost_clip_q, axis=1, keepdims=True)
+            M = np.where(M > thr, thr + clip_big, M)
+
+        a = np.full(Bi.shape[0], 1.0 / max(Bi.shape[0], 1), dtype=np.float64)
+        b = np.full(R.shape[0], 1.0 / max(R.shape[0], 1), dtype=np.float64)
+
         try:
             T = ot.unbalanced.sinkhorn_unbalanced(
                 a,
@@ -129,34 +160,54 @@ def _ot_barycentric_gpu(
                 stopThr=tol,
             )
 
-    row_sum = T.sum(1, keepdims=True) + 1e-12
-    Bi_to_R = (T / row_sum) @ R64
-    out = Bi_to_R.astype(Bi.dtype, copy=False)
+        row_sum = T.sum(1, keepdims=True) + 1e-12
+        Bi_to_R = (T / row_sum) @ R64
+        out = Bi_to_R.astype(Bi.dtype, copy=False)
 
     if not return_transport:
         return out
 
-    topk = int(min(max(1, transport_topk), T.shape[1]))
-    if topk < T.shape[1]:
-        idx_top = np.argpartition(T, -topk, axis=1)[:, -topk:]
-        rows = np.arange(T.shape[0])[:, None]
-        w_top_raw = T[rows, idx_top]
+    if ot_backend == "torch" and device.type == "cuda":
+        topk = int(min(max(1, transport_topk), T_t.shape[1]))
+        if topk < T_t.shape[1]:
+            w_top, idx_top = torch.topk(T_t, k=topk, dim=1)
+        else:
+            idx_top = torch.arange(T_t.shape[1], device=T_t.device)[None, :].expand(T_t.shape[0], -1)
+            w_top = T_t
+        sum_top = w_top.sum(dim=1, keepdim=True)
+        residual = torch.where(
+            row_sum_t > 0,
+            torch.clamp((row_sum_t - sum_top) / (row_sum_t + 1e-12), 0.0, 1.0),
+            torch.ones_like(row_sum_t),
+        )
+        w_top_norm = w_top / (sum_top + 1e-12)
+        transport = {
+            "indices": idx_top.detach().cpu().numpy().astype(np.int32, copy=False),
+            "weights": w_top_norm.detach().cpu().numpy().astype(np.float32, copy=False),
+            "residual": residual[:, 0].detach().cpu().numpy().astype(np.float32, copy=False),
+        }
     else:
-        idx_top = np.broadcast_to(np.arange(T.shape[1]), T.shape).copy()
-        w_top_raw = T.copy()
-    sum_top = w_top_raw.sum(axis=1, keepdims=True)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        residual = np.where(
-            row_sum > 0,
-            np.clip((row_sum - sum_top) / (row_sum + 1e-12), 0.0, 1.0),
-            1.0,
-        ).astype(np.float32, copy=False)
-    w_top_norm = w_top_raw / (sum_top + 1e-12)
-    transport = {
-        "indices": idx_top.astype(np.int32, copy=False),
-        "weights": w_top_norm.astype(np.float32, copy=False),
-        "residual": residual[:, 0],
-    }
+        topk = int(min(max(1, transport_topk), T.shape[1]))
+        if topk < T.shape[1]:
+            idx_top = np.argpartition(T, -topk, axis=1)[:, -topk:]
+            rows = np.arange(T.shape[0])[:, None]
+            w_top_raw = T[rows, idx_top]
+        else:
+            idx_top = np.broadcast_to(np.arange(T.shape[1]), T.shape).copy()
+            w_top_raw = T.copy()
+        sum_top = w_top_raw.sum(axis=1, keepdims=True)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            residual = np.where(
+                row_sum > 0,
+                np.clip((row_sum - sum_top) / (row_sum + 1e-12), 0.0, 1.0),
+                1.0,
+            ).astype(np.float32, copy=False)
+        w_top_norm = w_top_raw / (sum_top + 1e-12)
+        transport = {
+            "indices": idx_top.astype(np.int32, copy=False),
+            "weights": w_top_norm.astype(np.float32, copy=False),
+            "residual": residual[:, 0],
+        }
     return out, transport
 
 

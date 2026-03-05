@@ -181,3 +181,4 @@ dist/
 .python-version
 uv.lock
 
+.Rproj.user

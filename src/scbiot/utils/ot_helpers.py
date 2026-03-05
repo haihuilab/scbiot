@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple, Sequence
 
 import numpy as np
 import torch
+import scipy.sparse as sp
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import pairwise_distances, pairwise_distances_argmin
 from sklearn.manifold import trustworthiness
@@ -84,10 +85,6 @@ def _resolve_reference_query_masks(
     ref_pref = str(reference).lower()
     if ref_pref in label_map:
         ref_label = label_map[ref_pref]
-    elif "reference" in label_map:
-        ref_label = label_map["reference"]
-    elif "rna" in label_map:
-        ref_label = label_map["rna"]
     elif "largest" in ref_pref or ref_pref == "auto":
         ref_label = batches.value_counts().idxmax()
     else:
@@ -128,38 +125,6 @@ def _faiss_knn_search(
     return D2, I
 
 
-@torch.no_grad()
-def _sinkhorn_balanced_torch(
-    M: torch.Tensor,
-    a: torch.Tensor,
-    b: torch.Tensor,
-    eps: float = 0.05,
-    iters: int = 1000,
-    tol: float = 1e-6,
-) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    dtype = M.dtype
-    tiny = torch.finfo(dtype).eps
-    K = torch.exp(-M / eps)
-    v = torch.ones_like(b)
-    u = torch.ones_like(a)
-
-    for _ in range(iters):
-        Kv = torch.matmul(K, v).clamp_min(tiny)
-        u_new = a / Kv
-
-        KTu = torch.matmul(K.T, u_new).clamp_min(tiny)
-        v_new = b / KTu
-
-        if (
-            torch.max(torch.abs(torch.log(u_new) - torch.log(u))) < tol
-            and torch.max(torch.abs(torch.log(v_new) - torch.log(v))) < tol
-        ):
-            u, v = u_new, v_new
-            break
-        u, v = u_new, v_new
-    return u, v, K
-
-
 def _ot_barycentric_gpu(
     Bi: np.ndarray,
     R: np.ndarray,
@@ -168,20 +133,18 @@ def _ot_barycentric_gpu(
     cost_clip_q: Optional[float] = 0.90,
     clip_big: float = 50.0,
     ot_backend: str = "torch",
-    ot_mode: str = "unbalanced",
     iters: int = 1000,
     tol: float = 1e-6,
     use_gpu: bool = True,
     gpu_device: int = 0,
-) -> np.ndarray:
+    return_transport: bool = False,
+    transport_topk: int = 10,
+) -> np.ndarray | Tuple[np.ndarray, Dict[str, np.ndarray]]:
     # Backward-compat: map any 'keops' request to 'torch' (KeOps path removed).
     if isinstance(ot_backend, str) and ot_backend.lower() == "keops":
         ot_backend = "torch"
 
     assert ot_backend in {"torch", "pot"}
-    mode = str(ot_mode).lower()
-    if mode not in {"unbalanced", "balanced"}:
-        raise ValueError(f"ot_mode must be 'unbalanced' or 'balanced' (got {ot_mode!r})")
 
     if len(Bi) == 0:
         return Bi.copy()
@@ -199,7 +162,8 @@ def _ot_barycentric_gpu(
             reg_m=reg_m,
             cost_clip_q=cost_clip_q,
             clip_big=clip_big,
-            ot_mode=mode,
+            return_transport=return_transport,
+            transport_topk=transport_topk,
         )
 
     device = _torch_device(use_gpu, gpu_device)
@@ -220,30 +184,38 @@ def _ot_barycentric_gpu(
         thr = torch.quantile(M_full, q=float(cost_clip_q), dim=1, keepdim=True)
         M_full = torch.where(M_full > thr, thr + clip_big, M_full)
     M_norm = M_full / std_val
-    if mode == "balanced":
-        _, v, K = _sinkhorn_balanced_torch(
-            M_norm,
-            a,
-            b,
-            eps=reg,
-            iters=iters,
-            tol=tol,
-        )
-    else:
-        tau = float(reg_m / (reg_m + reg))
-        _, v, K = _sinkhorn_uot_torch(
-            M_norm,
-            a,
-            b,
-            eps=reg,
-            tau=tau,
-            iters=iters,
-            tol=tol,
-        )
+    tau = float(reg_m / (reg_m + reg))
+    u, v, K = _sinkhorn_uot_torch(
+        M_norm,
+        a,
+        b,
+        eps=reg,
+        tau=tau,
+        iters=iters,
+        tol=tol,
+    )
     num = torch.matmul(K, v[:, None] * R_t)
     den = torch.matmul(K, v).clamp_min(torch.finfo(dtype).eps)
     out = num / den[:, None]
-    return out.detach().cpu().to(dtype=torch.float32).numpy()
+    out_np = out.detach().cpu().to(dtype=torch.float32).numpy()
+
+    if not return_transport:
+        return out_np
+
+    T = (u[:, None] * K) * v[None, :]
+    topk = int(min(max(1, transport_topk), T.shape[1]))
+    if topk < T.shape[1]:
+        w_top, idx_top = torch.topk(T, k=topk, dim=1)
+    else:
+        idx_top = torch.arange(T.shape[1], device=T.device)[None, :].expand(T.shape[0], -1)
+        w_top = T
+    row_sum = w_top.sum(dim=1, keepdim=True).clamp_min(torch.finfo(dtype).eps)
+    w_norm = w_top / row_sum
+    transport = {
+        "indices": idx_top.detach().cpu().to(dtype=torch.int32).numpy(),
+        "weights": w_norm.detach().cpu().to(dtype=torch.float32).numpy(),
+    }
+    return out_np, transport
 
 
 def _ot_barycentric_pot(
@@ -253,18 +225,22 @@ def _ot_barycentric_pot(
     reg_m: float = 0.5,
     cost_clip_q: Optional[float] = 0.90,
     clip_big: float = 50.0,
-    ot_mode: str = "unbalanced",
-) -> np.ndarray:
+    return_transport: bool = False,
+    transport_topk: int = 10,
+) -> np.ndarray | Tuple[np.ndarray, Dict[str, np.ndarray]]:
     if not _POT_AVAILABLE or ot is None:
         raise ModuleNotFoundError(
             "POT is required when ot_backend='pot'. Install it via `pip install POT` or "
             "`pip install scbiot[analysis]`."
         )
-    mode = str(ot_mode).lower()
-    if mode not in {"unbalanced", "balanced"}:
-        raise ValueError(f"ot_mode must be 'unbalanced' or 'balanced' (got {ot_mode!r})")
     if len(Bi) == 0 or len(R) == 0:
-        return Bi.copy()
+        empty = Bi.copy()
+        if not return_transport:
+            return empty
+        return empty, {
+            "indices": np.zeros((0, 1), dtype=np.int32),
+            "weights": np.zeros((0, 1), dtype=np.float32),
+        }
     Bi64 = np.asarray(Bi, dtype=np.float64, order="C")
     R64 = np.asarray(R, dtype=np.float64, order="C")
     M = ot.dist(Bi64, R64, metric="sqeuclidean")
@@ -274,53 +250,50 @@ def _ot_barycentric_pot(
         M = np.where(M > thr, thr + clip_big, M)
     a = np.full(Bi.shape[0], 1.0 / max(Bi.shape[0], 1), dtype=np.float64)
     b = np.full(R.shape[0], 1.0 / max(R.shape[0], 1), dtype=np.float64)
-    if mode == "balanced":
-        try:
-            T = ot.sinkhorn(
-                a,
-                b,
-                M,
-                reg,
-                method="sinkhorn_stabilized",
-                numItermax=1000,
-                stopThr=1e-6,
-                verbose=False,
-            )
-        except TypeError:
-            T = ot.sinkhorn(
-                a,
-                b,
-                M,
-                reg,
-                numItermax=1000,
-                stopThr=1e-6,
-            )
-    else:
-        try:
-            T = ot.unbalanced.sinkhorn_unbalanced(
-                a,
-                b,
-                M,
-                reg,
-                reg_m,
-                method="sinkhorn_stabilized",
-                numItermax=1000,
-                stopThr=1e-6,
-                verbose=False,
-            )
-        except TypeError:
-            T = ot.unbalanced.sinkhorn_unbalanced(
-                a,
-                b,
-                M,
-                reg,
-                reg_m,
-                numItermax=1000,
-                stopThr=1e-6,
-            )
+    try:
+        T = ot.unbalanced.sinkhorn_unbalanced(
+            a,
+            b,
+            M,
+            reg,
+            reg_m,
+            method="sinkhorn_stabilized",
+            numItermax=1000,
+            stopThr=1e-6,
+            verbose=False,
+        )
+    except TypeError:
+        T = ot.unbalanced.sinkhorn_unbalanced(
+            a,
+            b,
+            M,
+            reg,
+            reg_m,
+            numItermax=1000,
+            stopThr=1e-6,
+        )
     row_sum = T.sum(1, keepdims=True) + 1e-12
     Bi_to_R = (T / row_sum) @ R64
-    return Bi_to_R.astype(Bi.dtype, copy=False)
+    out = Bi_to_R.astype(Bi.dtype, copy=False)
+
+    if not return_transport:
+        return out
+
+    topk = int(min(max(1, transport_topk), T.shape[1]))
+    if topk < T.shape[1]:
+        idx_top = np.argpartition(T, -topk, axis=1)[:, -topk:]
+        rows = np.arange(T.shape[0])[:, None]
+        w_top = T[rows, idx_top]
+    else:
+        idx_top = np.broadcast_to(np.arange(T.shape[1]), T.shape).copy()
+        w_top = T.copy()
+    w_sum = w_top.sum(axis=1, keepdims=True)
+    w_top = w_top / (w_sum + 1e-12)
+    transport = {
+        "indices": idx_top.astype(np.int32, copy=False),
+        "weights": w_top.astype(np.float32, copy=False),
+    }
+    return out, transport
 
 
 # -------------------- KNN / graphs --------------------
@@ -428,14 +401,20 @@ def _minikm_centers(
     use_gpu: bool = True,
     device: int = 0,
     weights: Optional[np.ndarray] = None,
-) -> np.ndarray:
+    return_labels: bool = False,
+) -> np.ndarray | Tuple[np.ndarray, np.ndarray]:
     """K-means centers with optional sample weights (falls back if unsupported)."""
     del use_gpu, device  # GPU unused but kept for signature parity
     n_clusters = int(max(2, min(n_clusters, len(X)))) if len(X) > 1 else 1
     if n_clusters <= 1:
-        return X.mean(0, keepdims=True).astype(X.dtype, copy=False)
+        centers = X.mean(0, keepdims=True).astype(X.dtype, copy=False)
+        if return_labels:
+            labels = np.zeros(len(X), dtype=np.int32)
+            return centers, labels
+        return centers
 
     xp = np.asarray(X, dtype=np.float32, order="C")
+    labels: Optional[np.ndarray] = None
     try:
         km = MiniBatchKMeans(
             n_clusters=n_clusters,
@@ -449,42 +428,116 @@ def _minikm_centers(
         except TypeError:
             km.fit(xp)
         centers = km.cluster_centers_.astype(X.dtype, copy=False)
+        if return_labels:
+            try:
+                labels = km.labels_
+            except Exception:
+                labels = km.predict(xp)
     except Exception:
         rng = np.random.default_rng(seed)
         init_idx = rng.choice(len(xp), size=n_clusters, replace=False)
         init = xp[init_idx]
         centers, _ = kmeans2(xp, init, iter=20, minit="matrix")
         centers = centers.astype(X.dtype, copy=False)
+        if return_labels:
+            labels = pairwise_distances_argmin(xp, centers, metric="euclidean")
+    if return_labels:
+        if labels is None:
+            labels = pairwise_distances_argmin(xp, centers, metric="euclidean")
+        return centers, labels.astype(np.int32, copy=False)
     return centers
 
 
 # ===================== Supervised helpers (from code2) =====================
 
-def _class_means(X: np.ndarray, y: np.ndarray, n_classes: int) -> np.ndarray:
+def _class_means(
+    X: np.ndarray,
+    y: np.ndarray,
+    n_classes: int,
+    use_gpu: bool = False,
+    device: int = 0,
+) -> np.ndarray:
     D = X.shape[1]
-    C = np.full((n_classes, D), np.nan, dtype=X.dtype)
-    for c in range(n_classes):
-        idx = np.where(y == c)[0]
-        if len(idx) > 0:
-            C[c] = X[idx].mean(0)
-    return C
+    if not use_gpu or not torch.cuda.is_available():
+        C = np.full((n_classes, D), np.nan, dtype=X.dtype)
+        for c in range(n_classes):
+            idx = np.where(y == c)[0]
+            if len(idx) > 0:
+                C[c] = X[idx].mean(0)
+        return C
+
+    device_t = _torch_device(use_gpu=True, gpu_device=device)
+    X_t = torch.as_tensor(X, dtype=torch.float32, device=device_t)
+    y_t = torch.as_tensor(y, dtype=torch.int64, device=device_t)
+    valid = (y_t >= 0) & (y_t < n_classes)
+    if not torch.any(valid):
+        return np.full((n_classes, D), np.nan, dtype=X.dtype)
+
+    sums = torch.zeros((n_classes, D), device=device_t, dtype=torch.float32)
+    counts = torch.zeros((n_classes,), device=device_t, dtype=torch.float32)
+    idx = y_t[valid]
+    sums.index_add_(0, idx, X_t[valid])
+    counts.index_add_(0, idx, torch.ones_like(idx, dtype=torch.float32))
+    means = sums / counts.clamp_min(1.0)[:, None]
+    means[counts == 0] = float("nan")
+    return means.cpu().numpy().astype(X.dtype, copy=False)
 
 
-def _nearest_other_class_index(X: np.ndarray, y: np.ndarray, C: np.ndarray) -> np.ndarray:
+def _nearest_other_class_index(
+    X: np.ndarray,
+    y: np.ndarray,
+    C: np.ndarray,
+    use_gpu: bool = False,
+    device: int = 0,
+    chunk_size: int = 65536,
+) -> np.ndarray:
     N = len(X)
     if N == 0 or C.size == 0:
         return np.full(N, -1, dtype=int)
-    D = pairwise_distances(X, C, metric="euclidean")
+    if not use_gpu or not torch.cuda.is_available():
+        D = pairwise_distances(X, C, metric="euclidean")
+        res = np.full(N, -1, dtype=int)
+        for i in range(N):
+            yi = y[i]
+            if yi < 0 or yi >= C.shape[0] or np.isnan(C[yi]).any():
+                continue
+            Di = D[i].copy()
+            Di[yi] = np.inf
+            j = int(np.argmin(Di))
+            if np.isfinite(Di[j]) and not np.isnan(C[j]).any():
+                res[i] = j
+        return res
+
+    device_t = _torch_device(use_gpu=True, gpu_device=device)
+    C_t = torch.as_tensor(C, dtype=torch.float32, device=device_t)
+    valid_class = ~torch.isnan(C_t).any(dim=1)
+    if not torch.any(valid_class):
+        return np.full(N, -1, dtype=int)
+
+    n_classes = int(C_t.shape[0])
     res = np.full(N, -1, dtype=int)
-    for i in range(N):
-        yi = y[i]
-        if yi < 0 or yi >= C.shape[0] or np.isnan(C[yi]).any():
-            continue
-        Di = D[i].copy()
-        Di[yi] = np.inf
-        j = int(np.argmin(Di))
-        if np.isfinite(Di[j]) and not np.isnan(C[j]).any():
-            res[i] = j
+    chunk_size = int(max(1, chunk_size))
+    for start in range(0, N, chunk_size):
+        end = min(start + chunk_size, N)
+        X_t = torch.as_tensor(X[start:end], dtype=torch.float32, device=device_t)
+        dist = torch.cdist(X_t, C_t, p=2)
+        if not torch.all(valid_class):
+            dist[:, ~valid_class] = float("inf")
+        y_chunk = torch.as_tensor(y[start:end], dtype=torch.int64, device=device_t)
+        valid_y = (y_chunk >= 0) & (y_chunk < n_classes)
+        if torch.any(valid_y):
+            rows = torch.nonzero(valid_y, as_tuple=False).squeeze(1)
+            cls = y_chunk[rows]
+            valid_rows = valid_class[cls]
+            if torch.any(valid_rows):
+                rows = rows[valid_rows]
+                cls = cls[valid_rows]
+                dist[rows, cls] = float("inf")
+        min_val, min_idx = torch.min(dist, dim=1)
+        min_idx_np = min_idx.cpu().numpy()
+        min_val_np = min_val.cpu().numpy()
+        min_idx_np[~np.isfinite(min_val_np)] = -1
+        res[start:end] = min_idx_np
     return res
 
 
@@ -718,23 +771,50 @@ def _cluster_sharpen_field(
     return disp.astype(X.dtype, copy=False)
 
 
-def _smooth_by_knn(field: np.ndarray, idx: np.ndarray, lam: float = 0.3) -> np.ndarray:
+def _smooth_by_knn(
+    field: np.ndarray,
+    idx: np.ndarray,
+    lam: float = 0.3,
+    use_gpu: bool = False,
+    device: int = 0,
+) -> np.ndarray:
     if lam <= 0 or idx.size == 0:
         return field
-    neigh = field[idx]
-    avg = neigh.mean(axis=1)
-    return (1.0 - lam) * field + lam * avg
+    if not use_gpu or not torch.cuda.is_available():
+        neigh = field[idx]
+        avg = neigh.mean(axis=1)
+        return (1.0 - lam) * field + lam * avg
+    device_t = _torch_device(use_gpu=True, gpu_device=device)
+    field_t = torch.as_tensor(field, dtype=torch.float32, device=device_t)
+    idx_t = torch.as_tensor(idx, dtype=torch.int64, device=device_t)
+    neigh = field_t[idx_t]
+    avg = neigh.mean(dim=1)
+    out = (1.0 - lam) * field_t + lam * avg
+    return out.cpu().numpy().astype(field.dtype, copy=False)
 
 
 def _cap_step_local(
-    move: np.ndarray, knn_mean_dist: np.ndarray, max_step_local: float = 1.1
+    move: np.ndarray,
+    knn_mean_dist: np.ndarray,
+    max_step_local: float = 1.1,
+    use_gpu: bool = False,
+    device: int = 0,
 ) -> np.ndarray:
     if max_step_local <= 0:
         return move
-    cap = max_step_local * (knn_mean_dist + 1e-8)
-    nrm = np.linalg.norm(move, axis=1) + 1e-12
-    scale = np.minimum(1.0, cap / nrm)
-    return move * scale[:, None]
+    if not use_gpu or not torch.cuda.is_available():
+        cap = max_step_local * (knn_mean_dist + 1e-8)
+        nrm = np.linalg.norm(move, axis=1) + 1e-12
+        scale = np.minimum(1.0, cap / nrm)
+        return move * scale[:, None]
+    device_t = _torch_device(use_gpu=True, gpu_device=device)
+    move_t = torch.as_tensor(move, dtype=torch.float32, device=device_t)
+    dist_t = torch.as_tensor(knn_mean_dist, dtype=torch.float32, device=device_t)
+    cap = max_step_local * (dist_t + 1e-8)
+    nrm = torch.linalg.norm(move_t, dim=1) + 1e-12
+    scale = torch.minimum(torch.ones_like(cap), cap / nrm)
+    out = move_t * scale[:, None]
+    return out.cpu().numpy().astype(move.dtype, copy=False)
 
 
 def _guard_edge_stretch_weighted(
@@ -745,35 +825,99 @@ def _guard_edge_stretch_weighted(
     smin_i: np.ndarray,
     smax_i: np.ndarray,
     rounds: int = 2,
+    use_gpu: bool = False,
+    device: int = 0,
+    chunk_size: int = 65536,
 ) -> np.ndarray:
     if idx0.size == 0:
         return move
+    if not use_gpu or not torch.cuda.is_available():
+        eps = 1e-8
+        for _ in range(int(max(1, rounds))):
+            Xcand_i = X[:, None, :] + move[:, None, :]
+            Xcand_j = X[idx0] + move[idx0]
+            dij_new = np.linalg.norm(Xcand_i - Xcand_j, axis=2)
+            r = dij_new / (d0 + eps)
+            r_max = r.max(axis=1)
+            r_min = r.min(axis=1)
+            f_high = np.minimum(1.0, smax_i / (r_max + eps))
+            f_low = np.minimum(1.0, (r_min + eps) / smin_i)
+            f = np.minimum(f_high, f_low).astype(move.dtype)
+            if np.all(f >= 0.999):
+                break
+            move *= f[:, None]
+        return move
+
+    device_t = _torch_device(use_gpu=True, gpu_device=device)
+    X_t = torch.as_tensor(X, dtype=torch.float32, device=device_t)
+    move_t = torch.as_tensor(move, dtype=torch.float32, device=device_t)
+    idx_t = torch.as_tensor(idx0, dtype=torch.int64, device=device_t)
+    d0_t = torch.as_tensor(d0, dtype=torch.float32, device=device_t)
+    smin_t = torch.as_tensor(smin_i, dtype=torch.float32, device=device_t)
+    smax_t = torch.as_tensor(smax_i, dtype=torch.float32, device=device_t)
     eps = 1e-8
+    n = X_t.shape[0]
+    chunk_size = int(max(1, chunk_size))
+
     for _ in range(int(max(1, rounds))):
-        Xcand_i = X[:, None, :] + move[:, None, :]
-        Xcand_j = X[idx0] + move[idx0]
-        dij_new = np.linalg.norm(Xcand_i - Xcand_j, axis=2)
-        r = dij_new / (d0 + eps)
-        r_max = r.max(axis=1)
-        r_min = r.min(axis=1)
-        f_high = np.minimum(1.0, smax_i / (r_max + eps))
-        f_low = np.minimum(1.0, (r_min + eps) / smin_i)
-        f = np.minimum(f_high, f_low).astype(move.dtype)
-        if np.all(f >= 0.999):
+        f_all = torch.ones(n, device=device_t, dtype=torch.float32)
+        for start in range(0, n, chunk_size):
+            end = min(start + chunk_size, n)
+            Xi = X_t[start:end]
+            move_i = move_t[start:end]
+            idx_chunk = idx_t[start:end]
+            Xcand_i = Xi[:, None, :] + move_i[:, None, :]
+            Xcand_j = X_t[idx_chunk] + move_t[idx_chunk]
+            dij_new = torch.linalg.norm(Xcand_i - Xcand_j, dim=2)
+            r = dij_new / (d0_t[start:end] + eps)
+            r_max = r.max(dim=1).values
+            r_min = r.min(dim=1).values
+            f_high = torch.minimum(torch.ones_like(r_max), smax_t[start:end] / (r_max + eps))
+            f_low = torch.minimum(torch.ones_like(r_min), (r_min + eps) / smin_t[start:end])
+            f_all[start:end] = torch.minimum(f_high, f_low)
+        if torch.all(f_all >= 0.999):
             break
-        move *= f[:, None]
-    return move
+        move_t = move_t * f_all[:, None]
+    return move_t.cpu().numpy().astype(move.dtype, copy=False)
 
 
-def _graph_strain(X: np.ndarray, idx0: np.ndarray, d0: np.ndarray, clip: float = 1.0) -> float:
+def _graph_strain(
+    X: np.ndarray,
+    idx0: np.ndarray,
+    d0: np.ndarray,
+    clip: float = 1.0,
+    use_gpu: bool = False,
+    device: int = 0,
+    chunk_size: int = 65536,
+) -> float:
     if idx0.size == 0:
         return 0.0
-    Xi = X[:, None, :]
-    Xj = X[idx0]
-    dij = np.linalg.norm(Xi - Xj, axis=2)
-    r = dij / (d0 + 1e-8)
-    dev = np.clip(r - 1.0, -clip, clip)
-    return float(np.mean(dev * dev))
+    if not use_gpu or not torch.cuda.is_available():
+        Xi = X[:, None, :]
+        Xj = X[idx0]
+        dij = np.linalg.norm(Xi - Xj, axis=2)
+        r = dij / (d0 + 1e-8)
+        dev = np.clip(r - 1.0, -clip, clip)
+        return float(np.mean(dev * dev))
+
+    device_t = _torch_device(use_gpu=True, gpu_device=device)
+    X_t = torch.as_tensor(X, dtype=torch.float32, device=device_t)
+    idx_t = torch.as_tensor(idx0, dtype=torch.int64, device=device_t)
+    d0_t = torch.as_tensor(d0, dtype=torch.float32, device=device_t)
+    n = X_t.shape[0]
+    chunk_size = int(max(1, chunk_size))
+    total = 0.0
+    count = 0
+    for start in range(0, n, chunk_size):
+        end = min(start + chunk_size, n)
+        Xi = X_t[start:end]
+        Xj = X_t[idx_t[start:end]]
+        dij = torch.linalg.norm(Xi[:, None, :] - Xj, dim=2)
+        r = dij / (d0_t[start:end] + 1e-8)
+        dev = torch.clamp(r - 1.0, -clip, clip)
+        total += float(torch.sum(dev * dev).item())
+        count += int(dev.numel())
+    return float(total / max(1, count))
 
 
 def _trustworthiness_score(

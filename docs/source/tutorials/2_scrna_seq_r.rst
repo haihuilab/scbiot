@@ -87,8 +87,7 @@ clustering:
       preset = "rna",
       obsm_key = "X_pca",
       batch_key = "stim",  # point this at your batch/condition column
-      out_key = "X_ot",
-      ot_mode = "balanced"
+      out_key = "X_ot"
     )
     adata <- res[[0]]
     metrics <- res[[1]]

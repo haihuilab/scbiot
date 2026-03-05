@@ -205,40 +205,63 @@ def plot_anndata_confusion(
         title = f"{pred_key} vs {true_key}"
     ax.set_title(title, fontsize=tick_fontsize)
 
+        # Decide tick labels BEFORE calling heatmap (avoid seaborn's "auto" downsampling)
     if annotate_mapping:
-        ax.set_yticklabels(list(range(len(norm_df.index))), rotation=0, fontsize=tick_fontsize)
-        ax.set_xticklabels(list(range(len(norm_df.columns))), rotation=0, ha="center", fontsize=tick_fontsize)
+        xticklabels = list(range(norm_df.shape[1]))
+        yticklabels = list(range(norm_df.shape[0]))
+    else:
+        xticklabels = norm_df.columns.tolist()
+        yticklabels = norm_df.index.tolist()
 
+    hm = sns.heatmap(
+        norm_df,
+        ax=ax,
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+        linewidths=linewidths,
+        linecolor=linecolor,
+        cbar=True,
+        cbar_ax=cax,
+        cbar_kws={"label": cbar_label},
+        xticklabels=xticklabels,
+        yticklabels=yticklabels,
+    )
+
+    cbar = hm.collections[0].colorbar
+    cbar.ax.tick_params(labelsize=tick_fontsize)
+    cbar.set_label(cbar_label, fontsize=tick_fontsize)
+
+    if title is None:
+        title = f"{pred_key} vs {true_key}"
+    ax.set_title(title, fontsize=tick_fontsize)
+
+    # Style ticks (no relabeling here; seaborn already set them correctly)
+    ax.tick_params(axis="both", labelsize=tick_fontsize)
+    if annotate_mapping:
+        plt.setp(ax.get_yticklabels(), rotation=0)
+        plt.setp(ax.get_xticklabels(), rotation=0, ha="center")
+        # mapping text stays the same:
         map_y = [f"{i} -> {name}" for i, name in enumerate(norm_df.index)]
         map_x = [f"{i} -> {name}" for i, name in enumerate(norm_df.columns)]
         pred_text = "Predicted cell types (Y):\n" + "\n".join(map_y)
         true_text = "Ground truth cell types (X):\n" + "\n".join(map_x)
         lax.text(
-            0.0,
-            1.0,
-            pred_text,
-            va="top",
-            ha="left",
-            fontsize=mapping_fontsize,
-            family="monospace",
+            0.0, 1.0, pred_text,
+            va="top", ha="left",
+            fontsize=mapping_fontsize, family="monospace",
             transform=lax.transAxes,
         )
         lax.text(
-            0.52,
-            1.0,
-            true_text,
-            va="top",
-            ha="left",
-            fontsize=mapping_fontsize,
-            family="monospace",
+            0.52, 1.0, true_text,
+            va="top", ha="left",
+            fontsize=mapping_fontsize, family="monospace",
             transform=lax.transAxes,
         )
     else:
-        ax.set_yticklabels(norm_df.index, rotation=0, fontsize=tick_fontsize)
-        ax.set_xticklabels(norm_df.columns, rotation=90, ha="center", fontsize=tick_fontsize)
-
-    ax.set_ylabel("Predicted cell types", fontsize=tick_fontsize)
-    ax.set_xlabel("Ground truth cell types", fontsize=tick_fontsize)
+        plt.setp(ax.get_yticklabels(), rotation=0)
+        plt.setp(ax.get_xticklabels(), rotation=90, ha="center")
+    
 
     # Keep squares when possible (works best when label counts are similar).
     try:
