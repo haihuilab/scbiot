@@ -5,7 +5,7 @@
 scBIOT documentation
 ==================================
 
-**scBIOT** (Single-Cell Biological Insights via Optimal Transport and Omics Transformers) unifies optimal-transport alignment with Transformer encoders for preprocessing and embedding single-cell RNA, ATAC, and multi-omic data. 
+**scBIOT** (Single-Cell Biological Insights via Optimal Transport) unifies optimal-transport alignment for preprocessing and embedding single-cell RNA, ATAC, and multi-omic data. 
 The library is designed for embeddings, reproducible benchmarking, and scalable inference across modalities.
 
 
@@ -38,7 +38,7 @@ Highlights
    tutorials/5_unpaired_multiomics
    tutorials/6_integrate_centroid_level
    tutorials/7_brain_1_3M_integration
-   tutorials/8_label_transfer_with_supbiot
+   tutorials/8_label_transfer_with_supbiot   
 
 .. toctree::
    :maxdepth: 2

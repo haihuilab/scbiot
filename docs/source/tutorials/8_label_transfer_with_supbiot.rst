@@ -8,3 +8,4 @@ Workflows for supervised label transfer across modalities using supBIOT.
 
    a. Supervised scBIOT (supBIOT) <1b_scrna_supervised_supbiot>
    b. Label transfer from scRNA-seq to spatial Xenium <8b_xenium_10x_ovarian_label_transfer_supbiot>
+   c. Supervised Panc8 benchmarking <8c_supervised_panc8>
