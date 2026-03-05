@@ -73,8 +73,6 @@ h2 @ file:///home/conda/feedstock_root/build_artifacts/h2_1738578511449/work
 h5netcdf==1.6.4
 h5py==3.14.0
 h5sparse==0.1.0
-harmony-pytorch==0.1.8
-harmonypy==0.0.10
 holoviews==1.21.0
 hpack @ file:///home/conda/feedstock_root/build_artifacts/hpack_1737618293087/work
 httpcore @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_httpcore_1745602916/work
