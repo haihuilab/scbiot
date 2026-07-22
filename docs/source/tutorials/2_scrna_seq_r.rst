@@ -1,7 +1,7 @@
 2. scRNA-seq in R (Seurat + reticulate)
 ====================================
 
-:download:`Open the R Markdown workflow <../../../examples/R/scRNA-seq_scbiot_in_R.Rmd>`
+:download:`Open the R Markdown workflow <../../../tutorials/R/scRNA-seq_scbiot_in_R.Rmd>`
 for a complete, runnable script. The steps mirror the Python notebooks but stay
 inside a Seurat workflow by hopping into ``scbiot`` through ``reticulate``.
 

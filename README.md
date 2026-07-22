@@ -38,7 +38,7 @@ inside a fresh virtual environment.
 ## Quick start
 - Detailed documentation is published on [scbiot.readthedocs.io](https://scbiot.readthedocs.io/en/stable/)
 and mirrors the examples below.
-- Refer to `examples/` folder for a runnable end-to-end notebook-friendly script.
+- Refer to the `tutorials/` folder for runnable end-to-end notebook-friendly scripts.
 
 ```python
 adata_path = f"{dir}/inputs/lung_atlas.h5ad"
