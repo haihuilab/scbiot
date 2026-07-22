@@ -11,6 +11,7 @@ from sklearn.manifold import trustworthiness
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import LabelEncoder
 from .torch_utils import _sinkhorn_uot_torch, _to_torch, _torch_device
+from .optional_backends import load_faiss
 try:  # POT (only used if you flip ot_backend="pot", otherwise unused)
     import ot  # type: ignore
     _POT_AVAILABLE = True
@@ -20,16 +21,7 @@ except ModuleNotFoundError:
 from scipy.cluster.vq import kmeans2
 
 # -------------------- Optional FAISS backend --------------------
-try:
-    import faiss
-    _FAISS_AVAIL = True
-    try:
-        _FAISS_GPU = bool(getattr(faiss, "get_num_gpus", lambda: 0)() > 0 and hasattr(faiss, "StandardGpuResources"))
-    except Exception:
-        _FAISS_GPU = False
-except Exception:
-    _FAISS_AVAIL, _FAISS_GPU = False, False
-    faiss = None  # type: ignore
+faiss, _FAISS_AVAIL, _FAISS_GPU = load_faiss()
 
 # Shared FAISS resources keyed by device id.
 _FAISS_GPU_RESOURCES: Dict[int, "faiss.StandardGpuResources"] = {}
@@ -450,6 +442,22 @@ def _minikm_centers(
 
 # ===================== Supervised helpers (from code2) =====================
 
+def _ensure_at_least_two_prototypes(
+    centers: np.ndarray,
+    seed: int = 0,
+    min_scale: float = 1e-6,
+) -> np.ndarray:
+    if centers.shape[0] >= 2 or centers.shape[0] == 0:
+        return centers
+    base = np.asarray(centers, dtype=centers.dtype, order="C")
+    rng = np.random.default_rng(seed)
+    scale = float(np.nanmean(np.abs(base)))
+    if (not np.isfinite(scale)) or scale < min_scale:
+        scale = min_scale
+    jitter = rng.normal(scale=scale * 1e-3, size=base.shape).astype(centers.dtype, copy=False)
+    dup = (base + jitter).astype(centers.dtype, copy=False)
+    return np.concatenate([base, dup], axis=0)
+
 def _class_means(
     X: np.ndarray,
     y: np.ndarray,
@@ -597,6 +605,7 @@ def _compute_prototypes(
         Kref_eff = int(min(K_ref, max(16, 2 * np.sqrt(max(len(ref_idx), 1)))))
         w_ref = _local_knn_density(X_ref, k=15, use_gpu=use_gpu, device=device) if len(X_ref) else None
         R = _minikm_centers(X_ref, Kref_eff, seed, use_gpu=use_gpu, device=device, weights=w_ref)
+        R = _ensure_at_least_two_prototypes(R, seed=seed + 101)
 
         packs: List[Tuple[np.ndarray, np.ndarray, np.ndarray, Optional[int]]] = []
         for lbl in np.unique(b):
@@ -609,6 +618,7 @@ def _compute_prototypes(
             Kb_eff = int(min(K_batch, max(8, 2 * np.sqrt(len(idx)))))
             w_i = _local_knn_density(Xi, k=15, use_gpu=use_gpu, device=device)
             Bi = _minikm_centers(Xi, Kb_eff, seed + 7, use_gpu=use_gpu, device=device, weights=w_i)
+            Bi = _ensure_at_least_two_prototypes(Bi, seed=seed + 107 + int(lbl))
             if _FAISS_AVAIL:
                 _, nn_idx = _faiss_knn_search(Xi, Bi, 1, use_gpu=use_gpu, device=device)
                 nn_idx = nn_idx.ravel()
@@ -632,6 +642,7 @@ def _compute_prototypes(
         w_ref_c = _local_knn_density(X_ref_c, k=15, use_gpu=use_gpu, device=device) if len(X_ref_c) else None
         R_dict[int(c)] = _minikm_centers(X_ref_c, Kref_eff, seed + int(c),
                                          use_gpu=use_gpu, device=device, weights=w_ref_c)
+        R_dict[int(c)] = _ensure_at_least_two_prototypes(R_dict[int(c)], seed=seed + 101 + int(c))
 
     # per (batch, class) batches
     for lbl in np.unique(b):
@@ -645,6 +656,7 @@ def _compute_prototypes(
             Kb_eff = int(min(K_batch, max(8, int(2 * np.sqrt(len(idx))))))
             w_i = _local_knn_density(Xi, k=15, use_gpu=use_gpu, device=device)
             Bi = _minikm_centers(Xi, Kb_eff, seed + 7 + int(c), use_gpu=use_gpu, device=device, weights=w_i)
+            Bi = _ensure_at_least_two_prototypes(Bi, seed=seed + 107 + int(c) + int(lbl))
             if _FAISS_AVAIL:
                 _, nn_idx = _faiss_knn_search(Xi, Bi, 1, use_gpu=use_gpu, device=device)
                 nn_idx = nn_idx.ravel()
@@ -678,6 +690,7 @@ def _compute_prototypes_union(
             Kb_eff = int(min(K_batch, max(8, 2 * np.sqrt(len(idx)))))
             w_i = _local_knn_density(Xi, k=15, use_gpu=use_gpu, device=device)
             Bi = _minikm_centers(Xi, Kb_eff, seed + 7, use_gpu=use_gpu, device=device, weights=w_i)
+            Bi = _ensure_at_least_two_prototypes(Bi, seed=seed + 107 + int(lbl))
             all_B.append(Bi)
             if _FAISS_AVAIL:
                 _, nn_idx = _faiss_knn_search(Xi, Bi, 1, use_gpu=use_gpu, device=device)
@@ -692,6 +705,7 @@ def _compute_prototypes_union(
             Kref_eff = int(min(K_ref, max(32, 2 * np.sqrt(len(Bstk)))))
             w_union = _local_knn_density(Bstk, k=15, use_gpu=use_gpu, device=device)
             R = _minikm_centers(Bstk, Kref_eff, seed, use_gpu=use_gpu, device=device, weights=w_union)
+        R = _ensure_at_least_two_prototypes(R, seed=seed + 101)
         ref_idx = np.arange(X.shape[0])
         return R, packs, ref_idx
 
@@ -709,6 +723,7 @@ def _compute_prototypes_union(
             Kb_eff = int(min(K_batch, max(8, int(2 * np.sqrt(len(idx))))))
             w_i = _local_knn_density(Xi, k=15, use_gpu=use_gpu, device=device)
             Bi = _minikm_centers(Xi, Kb_eff, seed + 7 + int(c), use_gpu=use_gpu, device=device, weights=w_i)
+            Bi = _ensure_at_least_two_prototypes(Bi, seed=seed + 107 + int(c) + int(lbl))
             all_B_dict[int(c)].append(Bi)
             if _FAISS_AVAIL:
                 _, nn_idx = _faiss_knn_search(Xi, Bi, 1, use_gpu=use_gpu, device=device)
@@ -727,49 +742,13 @@ def _compute_prototypes_union(
         Kref_eff = int(min(K_ref, max(32, 2 * np.sqrt(len(Bstk)))))
         w_union = _local_knn_density(Bstk, k=15, use_gpu=use_gpu, device=device)
         R_dict[int(c)] = _minikm_centers(Bstk, Kref_eff, seed + int(c), use_gpu=use_gpu, device=device, weights=w_union)
+        R_dict[int(c)] = _ensure_at_least_two_prototypes(R_dict[int(c)], seed=seed + 101 + int(c))
 
     ref_idx = np.arange(X.shape[0])  # placeholder, not used downstream
     return R_dict, packs, ref_idx
 
 
 # -------------------- Field shaping & guards --------------------
-
-def _cluster_sharpen_field(
-    X: np.ndarray,
-    K: int = 24,
-    seed: int = 0,
-    pull: float = 0.70,
-    push: float = 0.35,
-    bridge_score: Optional[np.ndarray] = None,
-    gate: float = 0.7,
-    use_gpu: bool = True,
-    device: int = 0,
-) -> np.ndarray:
-    N = len(X)
-    if N == 0:
-        return np.zeros_like(X)
-    K = int(max(8, min(K, N)))
-    C = _minikm_centers(X, K, seed, use_gpu=use_gpu, device=device)
-    if _FAISS_AVAIL:
-        D2, I = _faiss_knn_search(X, C, 2, use_gpu=use_gpu, device=device)
-        d01 = np.sqrt(np.maximum(D2, 0.0))
-        lab, other = I[:, 0], I[:, 1]
-        d1, d2 = d01[:, 0], d01[:, 1]
-    else:
-        D = pairwise_distances(X, C, metric="euclidean")
-        ord2 = np.argpartition(D, kth=(0, 1), axis=1)[:, :2]
-        d01 = np.take_along_axis(D, ord2, axis=1)
-        lab, other = ord2[:, 0], ord2[:, 1]
-        d1, d2 = d01[:, 0], d01[:, 1]
-    margin = (d2 - d1) / (np.median(d2) + 1e-8)
-    g = 1.0 / (1.0 + np.exp((margin - 1.0) / 0.8))
-    disp = pull * (C[lab] - X) + (push * g)[:, None] * (X - C[other])
-    if bridge_score is not None:
-        disp = ((1 - 0.4 * bridge_score)[:, None]) * disp
-        near_bridge = (bridge_score > gate).astype(X.dtype)[:, None]
-        disp = disp - near_bridge * (0.6 * (X - C[other]))
-    return disp.astype(X.dtype, copy=False)
-
 
 def _smooth_by_knn(
     field: np.ndarray,

@@ -842,9 +842,10 @@ def knn_smooth_ga_on_atac(atac: AnnData, ad_ga: AnnData, *, n_neighbors: int = 5
 
 def create_gene_activity(
     atac,
-    rna,
+    rna: Optional[AnnData] = None,
     *,
     gtf_file: str,
+    harmonize_to_rna: bool = True,
 
     # promoter / TSS windowing
     promoter_up: int = 2000,
@@ -892,9 +893,12 @@ def create_gene_activity(
     atac:
         ATAC AnnData with peak counts in ``.X`` and peak metadata in ``.var``.
     rna:
-        RNA AnnData used to harmonize gene names for the GA output.
+        Optional RNA AnnData used to harmonize gene names for the GA output.
     gtf_file:
         Path to the GTF annotation used to map peaks to genes.
+    harmonize_to_rna:
+        Harmonize GA gene names to ``rna``. Set to ``False`` when building
+        ATAC-only gene activity without an RNA reference.
     promoter_up / promoter_down:
         TSS window (bp) used for promoter definition.
     batch_key:
@@ -952,7 +956,11 @@ def create_gene_activity(
     # download gtf from GENCODE: https://www.gencodegenes.org/human/ 
     >>> gtf_file = f"{dir}/inputs/gencode.vM25.chr_patch_hapl_scaff.annotation.gtf.gz"
     >>> adata_ga = scb.pp.create_gene_activity(adata_atac, adata_gex, gtf_file=gtf_file, verbose=True)    
+    >>> adata_ga = scb.pp.create_gene_activity(adata_atac, gtf_file=gtf_file, harmonize_to_rna=False)
     """
+    if harmonize_to_rna and rna is None:
+        raise ValueError("rna must be provided when harmonize_to_rna=True.")
+
     atac_in = atac.copy() if copy_atac else atac
 
     top = remove_promoter_proximal_peaks(
@@ -1007,6 +1015,7 @@ def create_gene_activity(
         n_neighbors=knn_neighbors,
     )
 
-    harmonize_gene_names(rna, ga, rna_name_col=rna_name_col, verbose=verbose)
+    if harmonize_to_rna:
+        harmonize_gene_names(rna, ga, rna_name_col=rna_name_col, verbose=verbose)
 
     return ga

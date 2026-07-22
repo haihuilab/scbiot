@@ -6,9 +6,8 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 from anndata import AnnData
+from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import NearestNeighbors
-
-from .ot_transport import ot_label_transfer
 
 
 def _stack_matrices(matrices: List[np.ndarray | sp.spmatrix]) -> np.ndarray | sp.spmatrix:
@@ -25,8 +24,8 @@ def assemble_joint_embedding(rep_key: str, modalities: Dict[str, AnnData]) -> An
     for name, adata in modalities.items():
         if rep_key not in adata.obsm:
             raise KeyError(f"Representation '{rep_key}' missing for modality '{name}'.")
-        Z = np.asarray(adata.obsm[rep_key], dtype=np.float32)
-        embeddings.append(Z)
+        z = np.asarray(adata.obsm[rep_key], dtype=np.float32)
+        embeddings.append(z)
         obs_df = adata.obs.copy()
         obs_df["obs_original"] = adata.obs_names
         obs_df["modality"] = name
@@ -34,79 +33,33 @@ def assemble_joint_embedding(rep_key: str, modalities: Dict[str, AnnData]) -> An
         obs_frames.append(obs_df)
         adata_blocks.append(adata)
 
-    Z_all = np.vstack(embeddings)
+    z_all = np.vstack(embeddings)
     obs_all = pd.concat(obs_frames, axis=0, sort=False)
     first = adata_blocks[0]
     first_vars = first.var_names
     if all(adata.var_names.equals(first_vars) for adata in adata_blocks[1:]):
-        X_all = _stack_matrices([adata.X for adata in adata_blocks])
-        ad_all = AnnData(X=X_all, var=first.var.copy())
+        x_all = _stack_matrices([adata.X for adata in adata_blocks])
+        ad_all = AnnData(X=x_all, var=first.var.copy())
     else:
         first_set = set(first_vars)
         if all(set(adata.var_names) == first_set for adata in adata_blocks[1:]):
-            # Preserve full gene space when var_names match but are in different order.
-            X_all = _stack_matrices(
+            x_all = _stack_matrices(
                 [(adata if adata.var_names.equals(first_vars) else adata[:, first_vars]).X for adata in adata_blocks]
             )
-            ad_all = AnnData(X=X_all, var=first.var.copy())
+            ad_all = AnnData(X=x_all, var=first.var.copy())
         else:
             shared_set = set(first_vars)
             for adata in adata_blocks[1:]:
                 shared_set &= set(adata.var_names)
             if shared_set:
                 shared_vars = first_vars[first_vars.isin(shared_set)]
-                X_all = _stack_matrices([adata[:, shared_vars].X for adata in adata_blocks])
-                ad_all = AnnData(X=X_all, var=first.var.loc[shared_vars].copy())
+                x_all = _stack_matrices([adata[:, shared_vars].X for adata in adata_blocks])
+                ad_all = AnnData(X=x_all, var=first.var.loc[shared_vars].copy())
             else:
-                ad_all = AnnData(X=np.zeros((Z_all.shape[0], 1), dtype=np.float32))
+                ad_all = AnnData(X=np.zeros((z_all.shape[0], 1), dtype=np.float32))
     ad_all.obs = obs_all
-    ad_all.obsm[rep_key] = Z_all
+    ad_all.obsm[rep_key] = z_all
     return ad_all
-
-
-def label_transfer_shared_pca(
-    adata_ref: AnnData,
-    adata_query: AnnData,
-    *,
-    label_key: str,
-    use_rep: str,
-    k: int = 50,
-    metric: str = "cosine",
-    min_conf: float,
-) -> AnnData:
-    if label_key not in adata_ref.obs:
-        raise KeyError(f"{label_key!r} not found in adata_ref.obs")
-    if use_rep not in adata_ref.obsm or use_rep not in adata_query.obsm:
-        raise KeyError(f"{use_rep!r} missing in AnnData.obsm")
-
-    ot_meta = adata_query.uns.get("_ot_alignment")
-    if ot_meta is None or "indices" not in ot_meta or "weights" not in ot_meta:
-        raise RuntimeError("OT transport weights missing; run integrate_ot first.")
-
-    rna_order = pd.Index(ot_meta["rna_obs"])
-    labels_series = adata_ref.obs[label_key].reindex(rna_order)
-    if labels_series.isna().any():
-        raise ValueError("Missing RNA labels after reindexing; ensure obs names align with OT metadata.")
-
-    transport = {
-        "indices": ot_meta["indices"],
-        "weights": ot_meta["weights"],
-    }
-    if ot_meta.get("residual") is not None:
-        transport["residual"] = ot_meta["residual"]
-
-    res = ot_label_transfer(
-        transport=transport,
-        target_labels=labels_series,
-        min_conf=min_conf,
-        confidence_mode="entropy",
-    )
-
-    adata_query.obs["pred_cell_type"] = res["pred_labels"]
-    adata_query.obs["pred_confidence"] = res["confidence"]
-    adata_query.uns["pred_cell_type_classes"] = res["classes"]
-    adata_query.uns["pred_confidence_mode"] = "entropy"
-    return adata_query
 
 
 def _resolve_obsm_key(adata: AnnData, key: str) -> str:
@@ -162,3 +115,141 @@ def _knn_barycentric_project(
 
     out = (source_embed[idx] * weights[..., None]).sum(axis=1)
     return out.astype(np.float32, copy=False)
+
+
+def _validate_transfer_mode(transfer_mode: str) -> str:
+    mode = transfer_mode.strip().lower()
+    allowed = {"knn", "logreg"}
+    if mode not in allowed:
+        raise ValueError(f"transfer_mode must be one of {sorted(allowed)}.")
+    return mode
+
+
+def _encode_reference_labels(labels_series: pd.Series) -> tuple[np.ndarray, np.ndarray]:
+    labels_cat = labels_series.astype("category")
+    classes = labels_cat.cat.categories.to_numpy(dtype=object)
+    codes = labels_cat.cat.codes.to_numpy(dtype=np.int32)
+    valid = codes >= 0
+    return classes, np.where(valid, codes, -1)
+
+
+def _global_knn_scores(
+    x_ref: np.ndarray,
+    y_ref_codes: np.ndarray,
+    x_query: np.ndarray,
+    *,
+    k: int,
+    n_classes: int,
+    metric: str,
+) -> np.ndarray:
+    k_eff = int(max(1, min(k, x_ref.shape[0])))
+    nn = NearestNeighbors(n_neighbors=k_eff, metric=metric)
+    nn.fit(x_ref)
+    dist, idx = nn.kneighbors(x_query, n_neighbors=k_eff, return_distance=True)
+
+    tau = float(np.median(dist)) if dist.size else 1.0
+    if tau <= 0 or not np.isfinite(tau):
+        tau = 1.0
+
+    w = np.exp(-dist / tau).astype(np.float32, copy=False)
+    cls = y_ref_codes[idx]
+
+    scores = np.zeros((x_query.shape[0], n_classes), dtype=np.float32)
+    row_idx = np.arange(x_query.shape[0])
+    for j in range(k_eff):
+        np.add.at(scores, (row_idx, cls[:, j]), w[:, j])
+
+    row_sum = scores.sum(axis=1, keepdims=True)
+    scores = np.divide(
+        scores,
+        np.where(row_sum > 0, row_sum, 1.0),
+        out=np.zeros_like(scores),
+        where=row_sum > 0,
+    )
+    return scores
+
+
+def _logreg_scores(
+    x_ref: np.ndarray,
+    y_ref_codes: np.ndarray,
+    x_query: np.ndarray,
+    *,
+    n_classes: int,
+) -> np.ndarray:
+    if x_ref.shape[0] == 0:
+        return np.zeros((x_query.shape[0], n_classes), dtype=np.float32)
+
+    clf = LogisticRegression(
+        C=1.0,
+        max_iter=1000,
+        solver="lbfgs",
+        random_state=0,
+    )
+    clf.fit(x_ref, y_ref_codes)
+    return np.asarray(clf.predict_proba(x_query), dtype=np.float32, order="C")
+
+
+def label_transfer_shared_pca(
+    adata_ref: AnnData,
+    adata_query: AnnData,
+    *,
+    label_key: str,
+    use_rep: str,
+    transfer_mode: str = "logreg",
+    k: int = 50,
+    metric: str = "cosine",
+    min_conf: float,
+    unknown_label: str = "unknown",
+) -> AnnData:
+    mode = _validate_transfer_mode(transfer_mode)
+
+    if label_key not in adata_ref.obs:
+        raise KeyError(f"{label_key!r} not found in adata_ref.obs")
+
+    rep_key = use_rep
+    if rep_key not in adata_ref.obsm or rep_key not in adata_query.obsm:
+        raise KeyError(f"{rep_key!r} missing in AnnData.obsm")
+
+    x_ref = np.asarray(adata_ref.obsm[rep_key], dtype=np.float32, order="C")
+    x_query = np.asarray(adata_query.obsm[rep_key], dtype=np.float32, order="C")
+
+    labels_ref_all = adata_ref.obs[label_key].astype("string")
+    keep_ref = labels_ref_all.notna().to_numpy()
+    keep_ref &= labels_ref_all.to_numpy() != unknown_label
+
+    x_ref_labeled = x_ref[keep_ref]
+    labels_ref = labels_ref_all.iloc[np.where(keep_ref)[0]].astype(str)
+
+    if x_ref_labeled.shape[0] == 0:
+        raise ValueError("No labeled reference cells available for transfer.")
+
+    classes, y_ref_codes = _encode_reference_labels(labels_ref)
+    n_classes = int(classes.size)
+    if mode == "knn":
+        class_scores = _global_knn_scores(
+            x_ref_labeled,
+            y_ref_codes,
+            x_query,
+            k=k,
+            n_classes=n_classes,
+            metric=metric,
+        )
+    else:
+        class_scores = _logreg_scores(
+            x_ref_labeled,
+            y_ref_codes,
+            x_query,
+            n_classes=n_classes,
+        )
+
+    pred_idx = class_scores.argmax(axis=1)
+    pred = classes[pred_idx].astype(object)
+    conf = class_scores.max(axis=1).astype(np.float32, copy=False)
+    pred[conf < min_conf] = unknown_label
+
+    adata_query.obs["pred_cell_type"] = pred
+    adata_query.obs["pred_confidence"] = conf
+    adata_query.uns["pred_cell_type_classes"] = pd.Index(classes)
+    adata_query.uns["pred_confidence_mode"] = "max"
+
+    return adata_query

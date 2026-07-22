@@ -1,12 +1,14 @@
-"""
-Convenience shim so downstream code can access the public API from a single place.
-"""
+"""Convenience shim so downstream code can access the public API from a single place."""
 
 from __future__ import annotations
 
-import os
+from importlib import import_module
+from typing import TYPE_CHECKING
 
 from .__about__ import __version__, __version_info__
+
+if TYPE_CHECKING:
+    from . import ot, pl, pp, tl
 
 
 def _ensure_pandas_value_counts() -> None:
@@ -22,49 +24,39 @@ def _ensure_pandas_value_counts() -> None:
 
     pd.value_counts = _value_counts  # type: ignore[attr-defined]
 
-print(f"scbiot version {__version__}")
 _ensure_pandas_value_counts()
+_PUBLIC_SUBMODULES = {"ot", "pl", "pp", "tl"}
 
-# Keep OT helpers importable for docs without pulling heavy training dependencies.
-DOCS_MODE = bool(os.environ.get("SCBIOT_DOCS"))
+# Map top-level convenience names to ``(submodule, attribute)`` so the public
+# spatial-temporal API (``sb.integrate``, ``sb.velocity_field_sb_centroids``) is
+# importable directly from the package root without eagerly loading submodules.
+_PUBLIC_FUNCTIONS = {
+    "integrate": ("ot", "integrate"),
+    "velocity_field_sb_centroids": ("tl", "velocity_field_sb_centroids"),
+}
 
-from . import models
-from . import ot
-from . import pl
-from . import pp
 
-if DOCS_MODE:
-    VAE = Model_VAE = Encoder_model = Decoder_model = VAEModel = compute_loss = None  # type: ignore
-    VAETrainer = None  # type: ignore
-else:
-    from .models.vae import (
-        VAE,
-        Model_VAE,
-        Encoder_model,
-        Decoder_model,
-    )
-    from .models.vae_train import (
-        VAEModel,
-        compute_loss,
-    )
-    VAETrainer = None  # placeholder for backwards compatibility
+def __getattr__(name: str):
+    if name in _PUBLIC_SUBMODULES:
+        module = import_module(f".{name}", __name__)
+        globals()[name] = module
+        return module
+    if name in _PUBLIC_FUNCTIONS:
+        submodule, attr = _PUBLIC_FUNCTIONS[name]
+        obj = getattr(import_module(f".{submodule}", __name__), attr)
+        globals()[name] = obj
+        return obj
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 version_info = __version_info__
 
 __all__ = [
     "__version__",
     "version_info",
-    "VAE",
-    "Model_VAE",
-    "Encoder_model",
-    "Decoder_model",
-    "VAEModel",
-    "VAETrainer",
-    "compute_loss",
-    "models",
     "ot",
     "pl",
     "pp",
-    "spatial",
-    "pp_spatial",
+    "tl",
+    "integrate",
+    "velocity_field_sb_centroids",
 ]

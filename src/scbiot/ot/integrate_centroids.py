@@ -5,9 +5,10 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
-from .integrate import DEFAULT_MAX_ITER, integrate_ot, _infer_modality, _normalize_embedding, _ANCHOR
+from .integrate import DEFAULT_MAX_ITER, integrate_ot, _infer_modality, _normalize_embedding, _MODALITY_DEFAULTS
 from ..utils.ot_helpers import (
     _FAISS_AVAIL,
+    _ensure_at_least_two_prototypes,
     _as_nd_f32_c,
     _faiss_ready,
     _get_faiss_index,
@@ -26,9 +27,7 @@ def integrate_centroids(
     strength: float = 0.5,
     conservation: float = 0.5,
     prototypes: float = 0.5,
-    sharpen: float = 0.5,
     supervision: float = 0.5,
-    projector: float = 0.5,
     approximate: bool = False,
     reference: str = "auto",
     label_key: Optional[str] = None,
@@ -78,7 +77,7 @@ def integrate_centroids(
     tmp_path
         If provided, the full integrated embedding is stored as a memmap file at this path
         to limit peak RAM usage. If None, a regular in-memory numpy array is used.
-    strength / conservation / prototypes / sharpen / supervision / projector
+    strength / conservation / prototypes / supervision
         Semantic 0–1 knobs forwarded to `integrate_ot` on centroid embeddings.
     approximate / reference
         OT solver and reference selection controls forwarded to `integrate_ot`.
@@ -197,6 +196,7 @@ def integrate_centroids(
                 device=gpu_device,
                 weights=w_batch,
             )
+        C = _ensure_at_least_two_prototypes(C, seed=seed + 101 + int(lbl))
         centers_list.append(C)
 
         # Use original batch *string* for each centroid.
@@ -248,7 +248,7 @@ def integrate_centroids(
     if modality == "auto" and hasattr(adata_full, "uns") and isinstance(getattr(adata_full, "uns"), dict):
         for key in ("scbiot_modality", "modality"):
             value = str(adata_full.uns.get(key, "")).lower()
-            if value in _ANCHOR:
+            if value in _MODALITY_DEFAULTS:
                 modality = value
                 break
     n_total = int(adata_full.n_obs)
@@ -269,9 +269,7 @@ def integrate_centroids(
         strength=strength,
         conservation=conservation,
         prototypes=prototypes,
-        sharpen=sharpen,
         supervision=supervision,
-        projector=projector,
         approximate=approximate,
         reference=reference,
         label_key=label_key,
