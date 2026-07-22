@@ -1,7 +1,7 @@
 Plotting: ``pl``
 ================
 
-Visualization helpers for label transfer, transport scores, energy, and flow.
+Visualization helpers for label transfer, transport scores, and flow.
 
 .. currentmodule:: scbiot.pl
 
@@ -14,7 +14,5 @@ Visualization helpers for label transfer, transport scores, energy, and flow.
    celltype_predtype_mean_corr_heatmap
    transport_driver_heatmap
    transport_gene_dynamics
-   transport_energy_barplot
    umap_transport
-   umap_transport_energy
    umap_transport_flow

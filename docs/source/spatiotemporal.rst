@@ -83,7 +83,7 @@ and gene dynamics can be visualized directly.
        key_added="transport_energy",
        log1p=True,
    )
-   scb.pl.umap_transport_energy(adata, key="transport_energy")
+   sc.pl.umap(adata, color="transport_energy")
    scb.pl.transport_gene_dynamics(
        adata,
        gene="SOX9",
