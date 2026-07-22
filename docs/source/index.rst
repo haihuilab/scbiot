@@ -5,8 +5,10 @@
 scBIOT documentation
 ==================================
 
-**scBIOT** (Single-Cell Biological Insights via Optimal Transport) unifies optimal-transport alignment for preprocessing and embedding single-cell RNA, ATAC, and multi-omic data. 
-The library is designed for embeddings, reproducible benchmarking, and scalable inference across modalities.
+**scBIOT** (Single-Cell Biological Insights via Optimal Transport) integrates
+single-cell RNA, ATAC, spatial, temporal, and multi-omic data. The 1.2.0 API
+combines optimal-transport alignment, linear-autoencoder embeddings, label
+transfer, and transport-aware downstream analysis in an AnnData workflow.
 
 
 Highlights
@@ -15,9 +17,11 @@ Highlights
 * Fast optimal transport with GPU.
 * A unified `scBIOT` framework that can embed RNA, ATAC, or multi-omics modalities.
 * Supports scRNA-seq, snATAC-seq, and paired and unpaired multi-omics.
+* Spatial/time-aware integration and lineage-specific spatiotemporal velocity fields.
 * Supports label transfer across disjoint datasets, such as scRNA-seq to Xenium, scRNA-seq to snATAC-seq.
-* Built-in preprocessing steps (iterative LSI, gene activity annotation from peaks, coembedding of PCA from multiomics).
-* Support both CPU and GPU.
+* Built-in preprocessing steps (iterative LSI, gene activity annotation from peaks, and linear-autoencoder coembedding).
+* Transport-aware gene, trajectory, and visualization tools.
+* CPU and GPU execution.
 
 .. toctree::
    :maxdepth: 2
@@ -25,6 +29,8 @@ Highlights
 
    installation
    usage
+   multiomics
+   spatiotemporal
 
 .. toctree::
    :maxdepth: 2
@@ -39,6 +45,7 @@ Highlights
    tutorials/6_integrate_centroid_level
    tutorials/7_brain_1_3M_integration
    tutorials/8_label_transfer_with_supbiot
+   tutorials/9_spatiotemporal_dynamics
 
 .. toctree::
    :maxdepth: 2
@@ -46,6 +53,7 @@ Highlights
 
    api
    ot
-   preprocessing   
+   preprocessing
+   analysis
    plotting
    data_source

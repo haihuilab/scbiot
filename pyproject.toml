@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scbiot"
-description = "Single-Cell Biological Insights via Optimal Transport and Omics Transformers"
+description = "Single-cell multi-omics integration and spatiotemporal dynamics via optimal transport"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = { file = "LICENSE" }
@@ -14,7 +14,7 @@ keywords = [
   "single-cell",
   "omics",
   "optimal transport",
-  "Transformer",
+  "spatiotemporal",
   "bioinformatics",
   "rna",
   "atac",
@@ -96,7 +96,7 @@ include = [
   "CHANGES.md",
   "LICENSE",
   "docs",
-  "examples",
+  "tutorials",
 ]
 
 [tool.hatch.build.targets.wheel]

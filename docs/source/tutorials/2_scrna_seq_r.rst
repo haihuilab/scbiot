@@ -1,5 +1,5 @@
 2. scRNA-seq in R (Seurat + reticulate)
-====================================
+==========================================
 
 :download:`Open the R Markdown workflow <../../../tutorials/R/scRNA-seq_scbiot_in_R.Rmd>`
 for a complete, runnable script. The steps mirror the Python notebooks but stay
@@ -84,7 +84,6 @@ clustering:
 
     res <- scb$ot$integrate(
       adata,
-      preset = "rna",
       obsm_key = "X_pca",
       batch_key = "stim",  # point this at your batch/condition column
       out_key = "X_ot"

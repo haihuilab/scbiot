@@ -5,20 +5,15 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
-import types
 
 ROOT = Path(__file__).resolve().parents[2]
 DOCS_SOURCE = Path(__file__).resolve().parent
 DOCS_ROOT = DOCS_SOURCE.parent
-EXAMPLES_PATH = ROOT / "examples"
+TUTORIALS_PATH = ROOT / "tutorials"
 JUPYTER_CACHE = DOCS_ROOT / "_jupyter_cache"
 sys.path.insert(0, str(DOCS_SOURCE / "_ext"))
 os.environ.setdefault("SCBIOT_DOCS", "1")
-os.environ.setdefault("SCBIOT_EXAMPLES_PATH", str(EXAMPLES_PATH))
-
-# Allow docs to import scbiot when the models package has been removed.
-if not (ROOT / "src" / "scbiot" / "models").exists():
-    sys.modules.setdefault("scbiot.models", types.ModuleType("scbiot.models"))
+os.environ.setdefault("SCBIOT_TUTORIALS_PATH", str(TUTORIALS_PATH))
 
 # Importing scbiot triggers heavy optional deps; read version directly instead.
 ABOUT_PATH = ROOT / "src" / "scbiot" / "__about__.py"
@@ -55,12 +50,14 @@ extensions = [
 autodoc_mock_imports = [
     "anndata",
     "faiss",
+    "matplotlib",
     "numpy",
     "ot",
     "pandas",
     "pyranges",
     "scanpy",
     "scipy",
+    "seaborn",
     "sklearn",
     "torch",
     "tqdm",
@@ -68,6 +65,7 @@ autodoc_mock_imports = [
 
 autodoc_typehints = "description"
 autosummary_generate = True
+suppress_warnings = ["myst.header"]
 
 # Ensure mocked imports are active before autosummary tries to import modules.
 try:

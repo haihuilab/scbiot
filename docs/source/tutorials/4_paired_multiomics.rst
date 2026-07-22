@@ -1,5 +1,5 @@
 4. Paired Multiomics
-=================
+====================
 
 Paired RNA+ATAC workflows for matched cells.
 

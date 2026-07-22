@@ -1,7 +1,7 @@
 :orphan:
 
 1. scRNA-seq
-===========
+=============
 
 .. toctree::
    :maxdepth: 1

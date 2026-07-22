@@ -17,13 +17,15 @@ The published wheels include all core dependencies:
 Editable install
 ----------------
 
-Clone the repository if you want to run the example notebooks or contribute:
+Clone the repository if you want to run the tutorial notebooks or contribute:
 
 .. code-block:: bash
 
     git clone https://github.com/haihuilab/scbiot.git
     cd scbiot
     pip install -e .
+
+The notebooks are stored in the repository's ``tutorials/`` directory.
 
 Test your setup
 ---------------

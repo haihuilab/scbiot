@@ -1,20 +1,20 @@
 scBIOT
 ---------------
 
-**scBIOT** is a lightweight Python library for single-cell omics integration. 
-It bundles the preprocessing, embedding, transfer label workflows we routinely apply to RNA, ATAC, 
-and paired or unpaired multi-omics datasets. The library emphasizes reproducible data preparation, 
-single-cell clustering using embeddings derived from optimal transport, 
-and concise APIs that work out of the box on AnnData data.
+These notebooks demonstrate the scBIOT 1.2.0 workflows for preprocessing,
+optimal-transport integration, label transfer, and scalable analysis. Download
+links on each notebook page provide the same ``.ipynb`` files tracked in the
+repository's ``tutorials/`` directory.
 
 Highlights
 ---------------
 
    - **Batteries-included preprocessing**: scATAC-seq peak processing, iterative LSI, and gene activity annotation.
    - **Accurate atlas integration**: high-fidelity alignment with rare cell-type protection.
-   - **Unified scBIOT framework**: a single framework for embedding RNA, ATAC, transfer learning, and paired or unpaired multi-omics.
+   - **Unified scBIOT framework**: one interface for RNA, ATAC, spatial, temporal, and multi-omics integration.
    - **Fast integration via Optimal Transport (OT)**: scalable alignment for large single-cell datasets.
-   - **Scales to 100M cells locally**: memory-efficent scalable processing.
+   - **Linear autoencoders**: PCA-like embeddings and reference-to-query coembedding.
+   - **Scales to 100M cells locally**: memory-efficient scalable processing.
    - **Label transfer**: across multi-omics modalities and between spatial data and scRNA-seq references.
 
 
@@ -40,3 +40,4 @@ repository root:
    tutorials/6_integrate_centroid_level
    tutorials/7_brain_1_3M_integration
    tutorials/8_label_transfer_with_supbiot
+   tutorials/9_spatiotemporal_dynamics

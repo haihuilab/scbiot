@@ -504,7 +504,7 @@ def add_iterative_lsi(
         Key in ``adata.obsm`` to store the LSI embedding.
     outlier_quantiles:
         Quantiles for winsorizing TF values before IDF scaling. Set to ``None`` to disable.
-    **lsi_kwargs:
+    lsi_kwargs:
         Additional keyword arguments forwarded to ``lsi_transform`` (for example,
         ``n_iter``, ``topN``, ``layer``, ``per_cluster_union``).
 

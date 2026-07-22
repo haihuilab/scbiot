@@ -307,22 +307,20 @@ def integrate_paired(
     """
     Integrate paired multiome embeddings via paired-aware OT barycentric projection.
 
-    IMPORTANT:
-    - If view_key is ATAC LSI and obsm_key is RNA PCA, they are not commensurate.
-      Use `prealign="procrustes"` (default) or `prealign="ridge"` to make cross-modal
-      distances meaningful before OT.
+    RNA PCA and ATAC LSI are not directly commensurate. Use
+    ``prealign="procrustes"`` (default) or ``prealign="ridge"`` to make
+    cross-modal distances meaningful before OT.
 
     Parameters
     ----------
-    prealign:
-        "procrustes" (default): orthogonal alignment of view->base using paired cells.
-        "ridge": ridge regression mapping view->base.
-        "none": no prealignment (only recommended if view is already in base coordinates,
-                e.g. ATAC gene-activity projected into RNA PCA).
-    min_row_mass:
-        If unbalanced OT assigns too little mass to a row, barycentric projection becomes unstable.
-        For paired data, we fall back to identity (use base embedding) for those cells/rows.
-    max_obs_full_ot:
+    prealign
+        ``"procrustes"`` applies orthogonal alignment of view to base using
+        paired cells. ``"ridge"`` applies ridge regression, and ``"none"``
+        skips prealignment.
+    min_row_mass
+        Minimum transport mass before falling back to the base embedding for an
+        unstable row.
+    max_obs_full_ot
         Maximum number of observations to allow dense full OT (n x n) before auto-approximate.
     """
     if approximate_ot and centroid_ot:

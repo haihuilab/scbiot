@@ -192,18 +192,27 @@ def gene_transport_score(
     """
     Compute per-gene transport score.
 
-    Tg = sum_{i,j} gamma_ij * (Xt[j,g] - Xs[i,g])^2
+    Supports dense and SciPy sparse transport plans.
 
-    Supports dense and scipy.sparse gamma.
-    Inputs:
-      Xs: (N, G) numpy array (source cells) or scipy.sparse matrix
-      Xt: (M, G) numpy array (target cells) or scipy.sparse matrix
-      gamma: (N, M) dense numpy array or scipy.sparse matrix
-      eps: small float to avoid div-by-zero in normalization
-      normalize: if True, divide by gene variance across pooled Xs/Xt
-      signed: if True, compute signed transport: sum gamma_ij * (Xt - Xs)
-    Returns:
-      score: (G,) array, normalized if requested
+    Parameters
+    ----------
+    Xs
+        Source expression matrix with shape ``(N, G)``.
+    Xt
+        Target expression matrix with shape ``(M, G)``.
+    gamma
+        Dense or sparse transport plan with shape ``(N, M)``.
+    eps
+        Small value used to avoid division by zero.
+    normalize
+        Divide by pooled gene variance when true.
+    signed
+        Compute signed transport when true.
+
+    Returns
+    -------
+    np.ndarray
+        Per-gene transport scores with shape ``(G,)``.
     """
     Xs_arr = _as_array(Xs)
     Xt_arr = _as_array(Xt)
@@ -254,12 +263,14 @@ def gene_transport_pvals(
     """
     Compute observed gene transport scores and permutation-based p-values and FDR q-values.
 
-    Permutation: shuffle target cell indices (breaks alignment between gamma and gene expression).
-    For pval_method="wald", use a fast normal approximation (signed=True required).
-    Returns:
-      obs: observed (G,)
-      pvals: (G,)
-      qvals: (G,)
+    Target indices are shuffled for the permutation null. With
+    ``pval_method="wald"``, a fast normal approximation is used and
+    ``signed=True`` is required.
+
+    Returns
+    -------
+    tuple of np.ndarray
+        Observed scores, p-values, and FDR-adjusted q-values.
     """
     rng = np.random.default_rng(random_state)
     Xs_arr = _as_array(Xs)
@@ -783,28 +794,20 @@ def rank_transport_score(
 ) -> Any:
     """
     High-level helper to compute gene transport scores.
-    Parameters:
-      adata: AnnData object with .X (cells x genes) log-normalized
-      cond1: source condition value(s) to select from adata.obs[cond_key]
-      cond2: target condition value(s) to select from adata.obs[cond_key]
-      cond_key: column in adata.obs for condition labels (defaults to scb_ot batch_key)
-      rep_key: embedding key to compute transport plan if missing
-      layer: if not None, use adata.layers[layer] as expression
-      n_perms: number of permutations for p-values
-      store_key: base key used for result column naming
-      normalize: whether to normalize by pooled gene variance
-      signed: if True, aggregate forward/reverse scores via Stouffer z combination (perm nulls)
-      pval_method: 'perm' (default) or 'wald' (fast normal approximation; ignored when signed=True)
-      two_sided: if True, compute two-sided p-values (ignored when signed=True; always two-sided)
-      return_top: if int, return top-k genes by score
-      compute_gamma: if True, compute and store a transport plan when missing
-      transport_kwargs: optional kwargs forwarded to compute_ot_alignment
-    Returns:
-      pandas DataFrame, or (DataFrame, top_genes) if return_top is set
-      Note: when signed=True, stores barycentric projections in adata.layers['transport_fwd'] and
-            adata.layers['transport_rev'] for source cells in each direction.
-      If cond1/cond2 are None and more than two batches are present, returns the
-      consensus DataFrame from rank_batch_transport_genes.
+
+    ``adata.X`` should contain log-normalized expression. Conditions can be
+    selected with ``cond1``, ``cond2``, and ``cond_key``; alternatively,
+    ``time_key`` and ``lineage_key`` enable trajectory ranking. When a transport
+    plan is missing, ``rep_key`` selects the embedding used to compute it.
+
+    With ``signed=True``, barycentric projections are stored in
+    ``adata.layers['transport_fwd']`` and ``adata.layers['transport_rev']``.
+
+    Returns
+    -------
+    Any
+        A pandas DataFrame, a mapping of lineage names to DataFrames, or a
+        ``(DataFrame, top_genes)`` tuple when ``return_top`` is set.
     """
     if lineage_order is not None and lineage_key is None:
         raise ValueError("lineage_order requires lineage_key.")

@@ -27,6 +27,7 @@ __all__ = [
     "integrate_ot",
     "integrate_centroids",
     "integrate_paired",
+    "integrate_paired",
     "DEFAULT_MAX_ITER",
     "supbiot",
 ]
@@ -196,7 +197,7 @@ def supbiot(
         Override the aligned embedding key from OT metadata.
     verbose
         Print progress messages.
-    **kwargs
+    kwargs
         Extra args forwarded to ``transfer_labels``.
 
     Returns

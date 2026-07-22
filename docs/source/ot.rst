@@ -1,108 +1,109 @@
 Optimal transport: ``ot``
 =========================
 
-OT utilities for aligning batches and modalities. The functions below match what
-you see in the tutorials; refer to the notebooks for full, runnable examples.
+The v1.2.0 OT API uses semantic 0–1 controls rather than named presets. The main
+entry point is :func:`scbiot.ot.integrate`; :func:`scbiot.ot.integrate_ot` exposes
+the lower-level implementation, and :func:`scbiot.ot.supbiot` performs label
+transfer from the integration metadata.
 
-- ``integrate``: batch correction for single-modality or cross-modality data (RNA or ATAC).
+.. currentmodule:: scbiot.ot
 
-For a basic scRNA-seq dataset integration:
+.. autosummary::
+   :toctree: generated
+   :nosignatures:
+
+   integrate
+   integrate_ot
+   integrate_centroids
+   integrate_paired
+   supbiot
+
+Basic integration
+-----------------
 
 .. code-block:: python
 
    adata, metrics = scb.ot.integrate(
        adata,
-       preset="rna",
        obsm_key="X_pca",
        batch_key="batch",
-       out_key="X_ot"       
+       out_key="X_ot",
+       strength=0.5,
+       conservation=0.5,
+       prototypes=0.5,
    )
 
-For stable tuning, use the meta-parameter interface:
+``strength`` controls the amount of batch correction, ``conservation`` protects
+local geometry, and ``prototypes`` controls prototype resolution. When
+``label_key`` is supplied, ``supervision`` controls label guidance.
+
+Reference mapping and label transfer
+------------------------------------
+
+Set ``align_reference=True`` when query cells should be mapped into the reference
+space. ``prealign="auto"`` is the public default; ``"coral"``, ``"ot"``, or
+``None`` may be selected explicitly.
 
 .. code-block:: python
 
    adata, metrics = scb.ot.integrate(
        adata,
-       preset="rna",
-       epsilon=0.03,
-       tau=0.40,
-       knn_scale=1.0,
-       batch_strength=1.0,
-       gate_temperature=1.0,
-       # optional supervision:
-       label_key="semi_cell_type",
+       obsm_key="X_ae",
+       batch_key="modality",
+       out_key="X_supbiot",
+       reference="reference",
+       align_reference=True,
+       label_key="cell_type",
        unlabeled_category="Unknown",
-       sup_strength=0.10,
    )
-   
+   adata = scb.ot.supbiot(
+       adata,
+       use_rep="X_supbiot",
+       label_key="cell_type",
+       unlabeled_category="Unknown",
+       transfer_mode="logreg",
+   )
 
-For unpaired RNA/ATAC workflows, compute a shared PCA with ``pp.coembed_pca`` and
-then run ``ot.integrate(preset="anchor", obsm_key="X_pca_shared",
-batch_key="modality", reference_category="reference")`` to align query cells to
-the reference.
+Spatial and temporal structure
+------------------------------
 
-For paired RNA/ATAC workflows, use the ``paired`` preset so OT sees each cell's
-matched views directly. Call:
+Use ``spatial_key`` to include spatial coordinates and ``time_key`` to preserve a
+continuous or categorical trajectory. With a ``time_key``, automatic Gaussian
+prealignment is disabled to avoid collapsing the trajectory; pass ``prealign``
+explicitly only when that behavior is intended.
 
 .. code-block:: python
 
    adata, metrics = scb.ot.integrate(
        adata,
-       preset="paired",
        obsm_key="X_pca",
-       view_key="X_lsi",
-       batch_key="batch",
-       out_key="X_ot"    
+       batch_key="sample",
+       out_key="X_scbiot_st",
+       spatial_key="spatial",
+       spatial_weight=0.5,
+       time_key="timepoint",
+       time_weight=0.5,
    )
 
-The ``view_keys`` tuple points to the RNA PCA and ATAC LSI embeddings so the
-barycentric objective leverages the paired measurements directly.
+See :doc:`spatiotemporal` for velocity fields, transport-gene ranking, and
+dynamic visualizations.
 
 Scaling options
 ---------------
 
-For ultra-large datasets, use centroid-level OT:
+For very large datasets, set ``centroid=True``. For a faster, lower-precision
+Sinkhorn solve, set ``approximate=True``.
 
 .. code-block:: python
 
    adata, metrics = scb.ot.integrate(
        adata,
-       preset="centroid",
-       obsm_key="X_pca",
-       batch_key="batch",
-       out_key="scBIOT",
-   )
-
-If you want centroid OT while keeping another preset's OT hyperparameters,
-enable the flag:
-
-.. code-block:: python
-
-   adata, metrics = scb.ot.integrate(
-       adata,
-       preset="anchor",
        obsm_key="X_pca",
        batch_key="batch",
        out_key="X_ot",
-       centroid_ot=True,
+       centroid=True,
+       n_centroids_per_batch=2048,
+       max_samples_per_batch=500_000,
+       k_interp=8,
+       chunk_size=500_000,
    )
-
-For a faster approximate OT run on large datasets, enable the approximate OT
-solver while keeping your preset's data keys:
-
-.. code-block:: python
-
-   adata, metrics = scb.ot.integrate(
-       adata,
-       preset="atac",
-       obsm_key="X_lsi",
-       batch_key="batchname_all",
-       out_key="X_ot",
-       approximate_ot=True,
-   )
-
-OT backend controls
--------------------
-
-All OT entry points share the ``use_gpu``/``gpu_device`` and ``ot_backend`` knobs.
