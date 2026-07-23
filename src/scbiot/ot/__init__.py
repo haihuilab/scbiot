@@ -69,7 +69,7 @@ def integrate(
     transfer_mode: str = "knn",
 ):
     """
-    Wrapper around `integrate_ot` with the knob-based public interface.
+    Integrate batches through the semantic, knob-based public interface.
 
     Trajectory-aware prealignment
     ------------------------------

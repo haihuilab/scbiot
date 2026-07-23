@@ -1,10 +1,11 @@
 Optimal transport: ``ot``
 =========================
 
-The v1.2.0 OT API uses semantic 0–1 controls rather than named presets. The main
-entry point is :func:`scbiot.ot.integrate`; :func:`scbiot.ot.integrate_ot` exposes
-the lower-level implementation, and :func:`scbiot.ot.supbiot` performs label
-transfer from the integration metadata.
+The v1.2.0 OT API uses semantic 0–1 controls rather than named presets.
+:func:`scbiot.ot.integrate` is the public integration entry point, and
+:func:`scbiot.ot.supbiot` performs label transfer from its integration metadata.
+Approximate and centroid-level execution are selected through ``integrate()``
+parameters rather than separate public functions.
 
 .. currentmodule:: scbiot.ot
 
@@ -13,8 +14,6 @@ transfer from the integration metadata.
    :nosignatures:
 
    integrate
-   integrate_ot
-   integrate_centroids
    supbiot
 
 Basic integration
