@@ -15,7 +15,6 @@ transfer from the integration metadata.
    integrate
    integrate_ot
    integrate_centroids
-   integrate_paired
    supbiot
 
 Basic integration

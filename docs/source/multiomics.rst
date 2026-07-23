@@ -64,23 +64,32 @@ Run reference-aligned OT on that representation, then transfer labels. The same
 Paired multiome data
 --------------------
 
-When RNA autoencoder and ATAC LSI rows describe the same cells in the same
-order, use the paired-aware integrator. Its default Procrustes step makes the
-two component spaces comparable before OT.
+For paired RNA and ATAC measurements, create one RNA view and one gene-activity
+view for each cell. ``autoencoder_map`` places both views in the same feature
+space, and the standard integrator aligns them with modality as the batch key.
 
 .. code-block:: python
 
-   adata, metrics = scb.ot.integrate_paired(
+   adata = scb.pp.autoencoder_map(
+       adata_rna,
+       adata_gene_activity,
+       label="modality",
+       keys=("RNA", "ATAC"),
+       reference_layer="counts",
+       query_layer="ga_smooth",
+       out_key="X_ae",
+       random_state=0,
+   )
+   adata, metrics = scb.ot.integrate(
        adata,
        obsm_key="X_ae",
-       view_key="X_lsi",
-       batch_key="batch",
+       batch_key="modality",
        out_key="X_multiome",
-       prealign="procrustes",
+       random_state=0,
    )
 
-For larger paired datasets, set ``approximate_ot=True`` or
-``centroid_ot=True`` on ``integrate_paired``. Run the complete
-:doc:`tutorials/4_paired_multiomics` and
-:doc:`tutorials/5_unpaired_multiomics` notebooks for the data-download,
-gene-activity, autoencoder, OT, and supBIOT steps.
+Because rows are duplicated into RNA and ATAC views, collapse the aligned
+coordinates by the original cell identifier when a single same-cell
+representation is needed. Run the complete
+:doc:`tutorials/4_paired_multiomics` notebook for data download, gene activity,
+autoencoder mapping, OT integration, and optional supBIOT label transfer.

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any, Optional, Sequence
 from .integrate import DEFAULT_MAX_ITER, integrate_ot
 from .integrate_centroids import integrate_centroids
-from .integrate_paired import integrate_paired
 
 from .supbiot import (
     LOGREG_DEFAULT_C,
@@ -26,8 +25,6 @@ __all__ = [
     "integrate",
     "integrate_ot",
     "integrate_centroids",
-    "integrate_paired",
-    "integrate_paired",
     "DEFAULT_MAX_ITER",
     "supbiot",
 ]
