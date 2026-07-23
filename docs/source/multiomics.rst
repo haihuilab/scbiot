@@ -31,7 +31,6 @@ and returns a joint AnnData object.
        label_key="cell_type",
        unlabeled_category="Unknown",
        out_key="X_ae",
-       latent_dim=50,
        random_state=0,
    )
 

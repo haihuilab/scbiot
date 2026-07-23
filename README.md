@@ -85,9 +85,6 @@ adata = scb.pp.autoencoder(
     input_key="counts",
     out_key="X_ae",
     batch_key="batch",
-    latent_dim=30,
-    max_epochs=30,
-    early_stop_patience=5,
     random_state=RANDOM_STATE,
 )
 

@@ -31,9 +31,8 @@ repository root:
     pip install scbiot    
 
 The notebooks are deterministic by default. ``SCBIOT_TUTORIAL_DATA`` selects a
-shared download directory, ``SCBIOT_TUTORIAL_MAX_CELLS`` bounds large examples,
-and ``SCBIOT_AE_EPOCHS`` can shorten a smoke test. Set
-``SCBIOT_USE_GPU=1`` to opt into GPU execution.
+shared download directory and ``SCBIOT_TUTORIAL_MAX_CELLS`` bounds large
+examples. Set ``SCBIOT_USE_GPU=1`` to opt into GPU execution.
 
 .. toctree::
    :maxdepth: 1

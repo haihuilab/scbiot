@@ -77,12 +77,6 @@ Use CTRL cells as the labeled reference and STIM cells as the query. The
       input_key = "counts",
       out_key = "X_ae",
       batch_key = "stim",
-      label_key = "semi_cell_type",
-      unlabeled_category = "Unknown",
-      n_top_genes = as.integer(2000),
-      latent_dim = as.integer(30),
-      max_epochs = as.integer(30),
-      early_stop_patience = as.integer(5),
       random_state = as.integer(0)
     )
 
