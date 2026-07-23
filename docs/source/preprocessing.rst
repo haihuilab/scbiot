@@ -35,4 +35,3 @@ ATAC and gene activity
    annotate_gene_activity
    harmonize_gene_names
    knn_smooth_ga_on_atac
-   ensure_csr_f32
