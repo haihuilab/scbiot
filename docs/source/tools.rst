@@ -1,5 +1,5 @@
-Analysis: ``tl``
-================
+Tools: ``tl``
+=============
 
 Post-integration tools for gene-level transport, transport energy, and
 trajectory diagnostics.

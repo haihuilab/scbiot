@@ -54,6 +54,6 @@ Highlights
    api
    ot
    preprocessing
-   analysis
+   tools
    plotting
    data_source

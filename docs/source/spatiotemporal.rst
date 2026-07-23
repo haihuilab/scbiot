@@ -91,4 +91,4 @@ and gene dynamics can be visualized directly.
        layer="transport_fwd",
    )
 
-See :doc:`analysis` and :doc:`plotting` for the full downstream API.
+See :doc:`tools` and :doc:`plotting` for the full downstream API.

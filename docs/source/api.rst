@@ -19,7 +19,7 @@ See the module pages for complete function lists:
 
 * :doc:`ot`
 * :doc:`preprocessing`
-* :doc:`analysis`
+* :doc:`tools`
 * :doc:`plotting`
 
 Workflow guides are available for :doc:`multiomics` and
