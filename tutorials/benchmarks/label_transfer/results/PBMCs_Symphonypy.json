@@ -1,0 +1,12 @@
+{
+  "method": "Symphonypy",
+  "NMI": 0.8761662794005354,
+  "ARI": 0.9331479635538426,
+  "F1_macro": 0.7960174535491386,
+  "F1_weighted": 0.9189721013730587,
+  "n_cells": 24220,
+  "n_predicted": 24220,
+  "coverage": 1.0,
+  "dataset": "PBMCs",
+  "runtime_s": 503.6
+}

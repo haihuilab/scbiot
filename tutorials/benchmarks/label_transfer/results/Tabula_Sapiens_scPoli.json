@@ -1,0 +1,12 @@
+{
+  "method": "scPoli",
+  "NMI": 0.7396838384521321,
+  "ARI": 0.5003052520906875,
+  "F1_macro": 0.22738231620566504,
+  "F1_weighted": 0.5650335118313584,
+  "n_cells": 167446,
+  "n_predicted": 167446,
+  "coverage": 1.0,
+  "dataset": "Tabula_Sapiens",
+  "runtime_s": 18516.7
+}

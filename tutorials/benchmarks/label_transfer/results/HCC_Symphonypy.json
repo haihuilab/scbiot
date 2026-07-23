@@ -1,0 +1,12 @@
+{
+  "method": "Symphonypy",
+  "NMI": 0.7799633223329913,
+  "ARI": 0.8702182694040744,
+  "F1_macro": 0.7939189444537491,
+  "F1_weighted": 0.9488927261780734,
+  "n_cells": 239189,
+  "n_predicted": 239189,
+  "coverage": 1.0,
+  "dataset": "HCC",
+  "runtime_s": 182.4
+}

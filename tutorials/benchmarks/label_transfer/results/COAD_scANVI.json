@@ -1,0 +1,12 @@
+{
+  "method": "scANVI",
+  "NMI": 0.6631622586659828,
+  "ARI": 0.4096224811797881,
+  "F1_macro": 0.5237268549917643,
+  "F1_weighted": 0.7021808537936759,
+  "n_cells": 357644,
+  "n_predicted": 357644,
+  "coverage": 1.0,
+  "dataset": "COAD",
+  "runtime_s": 571.3
+}

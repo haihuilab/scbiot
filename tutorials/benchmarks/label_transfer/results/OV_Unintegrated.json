@@ -1,0 +1,12 @@
+{
+  "method": "Unintegrated",
+  "NMI": 0.4400715225540824,
+  "ARI": 0.5308527784699655,
+  "F1_macro": 0.4822403421909745,
+  "F1_weighted": 0.7883699268157887,
+  "n_cells": 361261,
+  "n_predicted": 361261,
+  "coverage": 1.0,
+  "dataset": "OV",
+  "runtime_s": 186.3
+}

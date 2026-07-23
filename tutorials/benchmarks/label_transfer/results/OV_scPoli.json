@@ -1,0 +1,12 @@
+{
+  "method": "scPoli",
+  "NMI": 0.5287461576381687,
+  "ARI": 0.6122869575477321,
+  "F1_macro": 0.35932694473663,
+  "F1_weighted": 0.8223368955548492,
+  "n_cells": 361261,
+  "n_predicted": 361261,
+  "coverage": 1.0,
+  "dataset": "OV",
+  "runtime_s": 6609.5
+}

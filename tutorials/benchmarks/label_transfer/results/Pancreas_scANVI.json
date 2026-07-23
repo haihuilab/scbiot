@@ -1,0 +1,12 @@
+{
+  "method": "scANVI",
+  "NMI": 0.891001713635439,
+  "ARI": 0.9314431217367074,
+  "F1_macro": 0.8635379613216642,
+  "F1_weighted": 0.9518715459505661,
+  "n_cells": 8098,
+  "n_predicted": 8098,
+  "coverage": 1.0,
+  "dataset": "Pancreas",
+  "runtime_s": 79.1
+}

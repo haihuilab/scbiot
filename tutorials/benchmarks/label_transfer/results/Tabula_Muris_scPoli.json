@@ -1,0 +1,12 @@
+{
+  "method": "scPoli",
+  "NMI": 0.7429101290370248,
+  "ARI": 0.5106989919453971,
+  "F1_macro": 0.23372468674843253,
+  "F1_weighted": 0.49512489301954976,
+  "n_cells": 241878,
+  "n_predicted": 241878,
+  "coverage": 1.0,
+  "dataset": "Tabula_Muris",
+  "runtime_s": 3247.5
+}

@@ -1,0 +1,12 @@
+{
+  "method": "Unintegrated",
+  "NMI": 0.8542275340938293,
+  "ARI": 0.9020399835260344,
+  "F1_macro": 0.7964545915823834,
+  "F1_weighted": 0.9165619055413887,
+  "n_cells": 24220,
+  "n_predicted": 24220,
+  "coverage": 1.0,
+  "dataset": "PBMCs",
+  "runtime_s": 23.3
+}

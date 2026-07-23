@@ -1,0 +1,13 @@
+{
+  "method": "supBIOT",
+  "NMI": 0.7941049901654957,
+  "ARI": 0.8892119864394349,
+  "F1_macro": 0.8171746645540512,
+  "F1_weighted": 0.9527185039677185,
+  "n_cells": 239189,
+  "n_predicted": 239189,
+  "coverage": 1.0,
+  "dataset": "HCC",
+  "runtime_s": 117.2,
+  "solver": "lbfgs"
+}

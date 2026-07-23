@@ -1,0 +1,12 @@
+{
+  "method": "scANVI",
+  "NMI": 0.48722268837406446,
+  "ARI": 0.256969701977324,
+  "F1_macro": 0.23482186552212206,
+  "F1_weighted": 0.6643350946391494,
+  "n_cells": 239189,
+  "n_predicted": 239189,
+  "coverage": 1.0,
+  "dataset": "HCC",
+  "runtime_s": 432.7
+}

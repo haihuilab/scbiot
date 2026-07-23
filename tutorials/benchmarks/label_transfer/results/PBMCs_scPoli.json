@@ -1,0 +1,12 @@
+{
+  "method": "scPoli",
+  "NMI": 0.8632171426048789,
+  "ARI": 0.9118197629340938,
+  "F1_macro": 0.7810599904789192,
+  "F1_weighted": 0.9031856330490112,
+  "n_cells": 24220,
+  "n_predicted": 24220,
+  "coverage": 1.0,
+  "dataset": "PBMCs",
+  "runtime_s": 1412.2
+}

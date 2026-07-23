@@ -1,0 +1,12 @@
+{
+  "method": "scPoli",
+  "NMI": 0.602223961399538,
+  "ARI": 0.6366230798933642,
+  "F1_macro": 0.46986858388735603,
+  "F1_weighted": 0.7719847034187737,
+  "n_cells": 357644,
+  "n_predicted": 357644,
+  "coverage": 1.0,
+  "dataset": "COAD",
+  "runtime_s": 6461.6
+}

@@ -1,0 +1,12 @@
+{
+  "method": "scANVI",
+  "NMI": 0.8700634090151026,
+  "ARI": 0.8425157081893843,
+  "F1_macro": 0.8253823040231153,
+  "F1_weighted": 0.9110213336144196,
+  "n_cells": 24220,
+  "n_predicted": 24220,
+  "coverage": 1.0,
+  "dataset": "PBMCs",
+  "runtime_s": 267.3
+}

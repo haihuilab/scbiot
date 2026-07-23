@@ -1,0 +1,12 @@
+{
+  "method": "Symphonypy",
+  "NMI": 0.8252933996681028,
+  "ARI": 0.8300360289583479,
+  "F1_macro": 0.7970683732396436,
+  "F1_weighted": 0.9156991784549828,
+  "n_cells": 8098,
+  "n_predicted": 8098,
+  "coverage": 1.0,
+  "dataset": "Pancreas",
+  "runtime_s": 44.8
+}

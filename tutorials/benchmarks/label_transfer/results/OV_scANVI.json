@@ -1,0 +1,12 @@
+{
+  "method": "scANVI",
+  "NMI": 0.4412806286689283,
+  "ARI": 0.13960984735157447,
+  "F1_macro": 0.30467135099242443,
+  "F1_weighted": 0.5086909405786392,
+  "n_cells": 361261,
+  "n_predicted": 361261,
+  "coverage": 1.0,
+  "dataset": "OV",
+  "runtime_s": 639.5
+}

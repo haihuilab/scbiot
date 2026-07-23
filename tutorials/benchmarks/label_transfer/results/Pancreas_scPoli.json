@@ -1,0 +1,12 @@
+{
+  "method": "scPoli",
+  "NMI": 0.9009617906640082,
+  "ARI": 0.944859605227169,
+  "F1_macro": 0.8500454726967666,
+  "F1_weighted": 0.9570777731783731,
+  "n_cells": 8098,
+  "n_predicted": 8098,
+  "coverage": 1.0,
+  "dataset": "Pancreas",
+  "runtime_s": 66.8
+}

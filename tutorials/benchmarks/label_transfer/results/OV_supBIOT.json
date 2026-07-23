@@ -1,0 +1,13 @@
+{
+  "method": "supBIOT",
+  "NMI": 0.8750363450993249,
+  "ARI": 0.9650269204174701,
+  "F1_macro": 0.8605049205585327,
+  "F1_weighted": 0.9760112828207578,
+  "n_cells": 361261,
+  "n_predicted": 361261,
+  "coverage": 1.0,
+  "dataset": "OV",
+  "runtime_s": 235.1,
+  "solver": "lbfgs"
+}

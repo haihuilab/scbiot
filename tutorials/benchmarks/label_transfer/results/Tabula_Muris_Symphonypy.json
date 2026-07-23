@@ -1,0 +1,12 @@
+{
+  "method": "Symphonypy",
+  "NMI": 0.5717991965080992,
+  "ARI": 0.3602371491163982,
+  "F1_macro": 0.09325244144893279,
+  "F1_weighted": 0.15861632826152186,
+  "n_cells": 241878,
+  "n_predicted": 241878,
+  "coverage": 1.0,
+  "dataset": "Tabula_Muris",
+  "runtime_s": 754.3
+}

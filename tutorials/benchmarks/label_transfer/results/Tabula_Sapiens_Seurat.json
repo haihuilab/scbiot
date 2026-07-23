@@ -1,0 +1,11 @@
+{
+  "method": "Seurat",
+  "NMI": 0.7804157404356201,
+  "ARI": 0.6023565373387345,
+  "F1_macro": 0.26079613055585776,
+  "F1_weighted": 0.6831384052676994,
+  "n_cells": 167446,
+  "n_predicted": 167446,
+  "coverage": 1.0,
+  "dataset": "Tabula_Sapiens"
+}

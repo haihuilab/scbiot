@@ -1,0 +1,12 @@
+{
+  "method": "Unintegrated",
+  "NMI": 0.6662111124253054,
+  "ARI": 0.8173590616201092,
+  "F1_macro": 0.6182602555628068,
+  "F1_weighted": 0.8287833464402227,
+  "n_cells": 357644,
+  "n_predicted": 357644,
+  "coverage": 1.0,
+  "dataset": "COAD",
+  "runtime_s": 193.8
+}

@@ -1,0 +1,12 @@
+{
+  "method": "scPoli",
+  "NMI": 0.2766737211802307,
+  "ARI": 0.024190324217840783,
+  "F1_macro": 0.1848861410923089,
+  "F1_weighted": 0.27499907595091805,
+  "n_cells": 239189,
+  "n_predicted": 239189,
+  "coverage": 1.0,
+  "dataset": "HCC",
+  "runtime_s": 4981.8
+}

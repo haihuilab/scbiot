@@ -1,0 +1,12 @@
+{
+  "method": "supBIOT",
+  "NMI": 0.9181969563492316,
+  "ARI": 0.9478631591687275,
+  "F1_macro": 0.9319285773441098,
+  "F1_weighted": 0.9639654520138412,
+  "n_cells": 8098,
+  "n_predicted": 8098,
+  "coverage": 1.0,
+  "dataset": "Pancreas",
+  "runtime_s": 34.7
+}

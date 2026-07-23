@@ -1,0 +1,12 @@
+{
+  "method": "supBIOT",
+  "NMI": 0.8067242770030426,
+  "ARI": 0.9223544315652049,
+  "F1_macro": 0.7917643747739369,
+  "F1_weighted": 0.92229567141966,
+  "n_cells": 357644,
+  "n_predicted": 357644,
+  "coverage": 1.0,
+  "dataset": "COAD",
+  "runtime_s": 222.7
+}

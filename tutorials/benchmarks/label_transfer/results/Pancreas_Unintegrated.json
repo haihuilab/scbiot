@@ -1,0 +1,12 @@
+{
+  "method": "Unintegrated",
+  "NMI": 0.820650517371704,
+  "ARI": 0.8523109879282265,
+  "F1_macro": 0.8670738711036172,
+  "F1_weighted": 0.918001594556098,
+  "n_cells": 8098,
+  "n_predicted": 8098,
+  "coverage": 1.0,
+  "dataset": "Pancreas",
+  "runtime_s": 3.2
+}

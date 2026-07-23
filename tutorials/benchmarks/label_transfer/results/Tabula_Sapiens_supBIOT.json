@@ -1,0 +1,13 @@
+{
+  "method": "supBIOT",
+  "NMI": 0.8127228418265054,
+  "ARI": 0.6613658844590181,
+  "F1_macro": 0.40770093086695647,
+  "F1_weighted": 0.7802224601453277,
+  "n_cells": 167446,
+  "n_predicted": 167446,
+  "coverage": 1.0,
+  "dataset": "Tabula_Sapiens",
+  "runtime_s": 2207.8,
+  "solver": "adam (lbfgs OOM)"
+}

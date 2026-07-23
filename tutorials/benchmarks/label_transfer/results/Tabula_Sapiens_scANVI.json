@@ -1,0 +1,12 @@
+{
+  "method": "scANVI",
+  "NMI": 0.7552986012363718,
+  "ARI": 0.5435771961100668,
+  "F1_macro": 0.3132156227918429,
+  "F1_weighted": 0.6556620597297318,
+  "n_cells": 167446,
+  "n_predicted": 167446,
+  "coverage": 1.0,
+  "dataset": "Tabula_Sapiens",
+  "runtime_s": 1276.1
+}

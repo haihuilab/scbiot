@@ -1,0 +1,12 @@
+{
+  "method": "Symphonypy",
+  "NMI": 0.7303983282703094,
+  "ARI": 0.5735219168713461,
+  "F1_macro": 0.2429485958713231,
+  "F1_weighted": 0.6495878103365343,
+  "n_cells": 167446,
+  "n_predicted": 167446,
+  "coverage": 1.0,
+  "dataset": "Tabula_Sapiens",
+  "runtime_s": 6468.2
+}

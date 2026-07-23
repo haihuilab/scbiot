@@ -1,0 +1,12 @@
+{
+  "method": "Unintegrated",
+  "NMI": 0.797888579878518,
+  "ARI": 0.6979529508079574,
+  "F1_macro": 0.30751339978005937,
+  "F1_weighted": 0.5981963298610466,
+  "n_cells": 241878,
+  "n_predicted": 241878,
+  "coverage": 1.0,
+  "dataset": "Tabula_Muris",
+  "runtime_s": 102.1
+}

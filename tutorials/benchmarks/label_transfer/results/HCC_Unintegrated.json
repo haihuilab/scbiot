@@ -1,0 +1,12 @@
+{
+  "method": "Unintegrated",
+  "NMI": 0.3822558344478667,
+  "ARI": 0.4510981596496021,
+  "F1_macro": 0.47155756837117074,
+  "F1_weighted": 0.7709874230531661,
+  "n_cells": 239189,
+  "n_predicted": 239189,
+  "coverage": 1.0,
+  "dataset": "HCC",
+  "runtime_s": 221.9
+}

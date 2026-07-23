@@ -1,0 +1,12 @@
+{
+  "method": "scANVI",
+  "NMI": 0.7665106972837402,
+  "ARI": 0.5386605495804744,
+  "F1_macro": 0.2907508811554419,
+  "F1_weighted": 0.5059731568082697,
+  "n_cells": 241878,
+  "n_predicted": 241878,
+  "coverage": 1.0,
+  "dataset": "Tabula_Muris",
+  "runtime_s": 601.2
+}

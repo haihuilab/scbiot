@@ -1,0 +1,13 @@
+{
+  "method": "supBIOT",
+  "NMI": 0.887686797569131,
+  "ARI": 0.9426574817046255,
+  "F1_macro": 0.8411111937160881,
+  "F1_weighted": 0.9335184324076639,
+  "n_cells": 24220,
+  "n_predicted": 24220,
+  "coverage": 1.0,
+  "dataset": "PBMCs",
+  "runtime_s": 154.5,
+  "solver": "lbfgs"
+}

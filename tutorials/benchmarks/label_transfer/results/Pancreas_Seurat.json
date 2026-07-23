@@ -1,0 +1,11 @@
+{
+  "method": "Seurat",
+  "NMI": 0.9025206489807638,
+  "ARI": 0.9399955457403341,
+  "F1_macro": 0.817193158579031,
+  "F1_weighted": 0.9551480680503603,
+  "n_cells": 8098,
+  "n_predicted": 8098,
+  "coverage": 1.0,
+  "dataset": "Pancreas"
+}

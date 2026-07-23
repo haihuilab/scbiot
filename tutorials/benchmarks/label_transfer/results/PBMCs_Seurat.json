@@ -1,0 +1,11 @@
+{
+  "method": "Seurat",
+  "NMI": 0.8386162350710611,
+  "ARI": 0.9072405187851316,
+  "F1_macro": 0.7416899126621743,
+  "F1_weighted": 0.8791717562547823,
+  "n_cells": 24220,
+  "n_predicted": 24220,
+  "coverage": 1.0,
+  "dataset": "PBMCs"
+}

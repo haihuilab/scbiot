@@ -1,0 +1,13 @@
+{
+  "method": "supBIOT",
+  "NMI": 0.8212138015234093,
+  "ARI": 0.7273627823521716,
+  "F1_macro": 0.32957081041115854,
+  "F1_weighted": 0.6157481817642985,
+  "n_cells": 241878,
+  "n_predicted": 241878,
+  "coverage": 1.0,
+  "dataset": "Tabula_Muris",
+  "runtime_s": 938.8,
+  "solver": "lbfgs"
+}

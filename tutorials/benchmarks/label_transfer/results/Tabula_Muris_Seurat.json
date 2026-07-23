@@ -1,0 +1,11 @@
+{
+  "method": "Seurat",
+  "NMI": 0.7300852772270773,
+  "ARI": 0.5540299667572466,
+  "F1_macro": 0.24529518726575564,
+  "F1_weighted": 0.5004647543884303,
+  "n_cells": 241878,
+  "n_predicted": 241878,
+  "coverage": 1.0,
+  "dataset": "Tabula_Muris"
+}
