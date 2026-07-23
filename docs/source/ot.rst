@@ -21,11 +21,14 @@ transfer from the integration metadata.
 Basic integration
 -----------------
 
+``X_ae`` below is produced by :func:`scbiot.pp.autoencoder`, as shown in
+:doc:`usage`.
+
 .. code-block:: python
 
    adata, metrics = scb.ot.integrate(
        adata,
-       obsm_key="X_pca",
+       obsm_key="X_ae",
        batch_key="batch",
        out_key="X_ot",
        strength=0.5,
@@ -76,7 +79,7 @@ explicitly only when that behavior is intended.
 
    adata, metrics = scb.ot.integrate(
        adata,
-       obsm_key="X_pca",
+       obsm_key="X_ae",
        batch_key="sample",
        out_key="X_scbiot_st",
        spatial_key="spatial",
@@ -98,7 +101,7 @@ Sinkhorn solve, set ``approximate=True``.
 
    adata, metrics = scb.ot.integrate(
        adata,
-       obsm_key="X_pca",
+       obsm_key="X_ae",
        batch_key="batch",
        out_key="X_ot",
        centroid=True,

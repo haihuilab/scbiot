@@ -4,7 +4,9 @@ scBIOT
 These notebooks demonstrate the scBIOT 1.2.0 workflows for preprocessing,
 optimal-transport integration, label transfer, and scalable analysis. Download
 links on each notebook page provide the same ``.ipynb`` files tracked in the
-repository's ``tutorials/`` directory.
+repository's ``tutorials/`` directory. Inputs are fetched from stable Figshare
+file links or the original provider listed in :doc:`data_source`; no hidden
+intermediate cache is required.
 
 Highlights
 ---------------
@@ -27,6 +29,11 @@ repository root:
 .. code-block:: bash
 
     pip install scbiot    
+
+The notebooks are deterministic by default. ``SCBIOT_TUTORIAL_DATA`` selects a
+shared download directory, ``SCBIOT_TUTORIAL_MAX_CELLS`` bounds large examples,
+and ``SCBIOT_AE_EPOCHS`` can shorten a smoke test. Set
+``SCBIOT_USE_GPU=1`` to opt into GPU execution.
 
 .. toctree::
    :maxdepth: 1

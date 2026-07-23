@@ -26,6 +26,13 @@ pip install scbiot
 
 For documentation builds install `pip install scbiot[docs]`.
 
+## Data availability
+
+Prepared tutorial inputs are archived in the
+[scBIOT Figshare collection](https://figshare.com/articles/dataset/Anndata_for_scBIOT_analysis/30671669).
+Inputs not present there are linked to their original providers in the
+[data-source documentation](https://scbiot.readthedocs.io/en/stable/data_source.html).
+
 ### Optional extras
 
 For an exact replica of the development environment, use
@@ -39,6 +46,9 @@ for CPU and GPU notes.
 - Detailed documentation is published on [Read the Docs](https://scbiot.readthedocs.io/en/stable/).
 - The [`tutorials/`](tutorials/) directory contains runnable end-to-end notebooks.
 
+The example below deterministically holds out batch `B4` as an unlabeled query
+and retains the original `cell_type` column for evaluation:
+
 ```python
 import scanpy as sc
 import scbiot as scb
@@ -48,90 +58,108 @@ adata = sc.read(
     backup_url="https://figshare.com/ndownloader/files/24539942",
 )
 
-sc.pp.highly_variable_genes(
-    adata, n_top_genes=2000, flavor="seurat_v3", batch_key="batch"
-)
-sc.pp.normalize_total(adata)
-sc.pp.log1p(adata)
-sc.pp.scale(adata)
-sc.tl.pca(adata, n_comps=30, use_highly_variable=True)
+LABEL_KEY = "semi_cell_type"
+UNLABELED = "Unknown"
+QUERY_BATCH = "B4"
+RANDOM_STATE = 0
 
+# The downloaded AnnData contains batch, cell_type, and a counts layer.
+required_obs = {"batch", "cell_type"}
+missing_obs = required_obs.difference(adata.obs.columns)
+if missing_obs:
+    raise KeyError(f"Missing required obs columns: {sorted(missing_obs)}")
+if "counts" not in adata.layers:
+    raise KeyError("Missing required adata.layers['counts']")
+
+# Build the semi-supervised label column used by both AE and supBIOT.
+batch = adata.obs["batch"].astype("string")
+query_mask = batch.eq(QUERY_BATCH).fillna(False)
+if not query_mask.any() or query_mask.all():
+    raise ValueError(f"QUERY_BATCH={QUERY_BATCH!r} does not define a valid query")
+adata.obs[LABEL_KEY] = adata.obs["cell_type"].astype("string")
+adata.obs.loc[query_mask, LABEL_KEY] = UNLABELED
+
+# 1. Learn the v1.2 linear-autoencoder representation.
+adata = scb.pp.autoencoder(
+    adata,
+    input_key="counts",
+    out_key="X_ae",
+    batch_key="batch",
+    latent_dim=30,
+    max_epochs=30,
+    early_stop_patience=5,
+    random_state=RANDOM_STATE,
+)
+
+# 2. Align batches in the autoencoder representation with optimal transport.
 adata, metrics = scb.ot.integrate(
     adata,
-    obsm_key="X_pca",
+    obsm_key="X_ae",
     batch_key="batch",
-    out_key="X_ot",
+    out_key="X_supbiot",
+    label_key=LABEL_KEY,
+    unlabeled_category=UNLABELED,
+    random_state=RANDOM_STATE,
 )
 print(metrics)
 
-sc.pp.neighbors(adata, use_rep="X_ot")
-sc.tl.umap(adata)
-sc.tl.leiden(adata, resolution=0.8, key_added="leiden_X_ot")
+# 3. Transfer reference labels to the unlabeled query cells.
+adata = scb.ot.supbiot(
+    adata,
+    use_rep="X_supbiot",
+    input_rep_key="X_ae",
+    label_key=LABEL_KEY,
+    unlabeled_category=UNLABELED,
+    pred_label_key="pred_cell_type",
+    pred_conf_key="pred_confidence",
+    min_conf=0.0,
+    random_state=RANDOM_STATE,
+)
+
+sc.pp.neighbors(adata, use_rep="X_supbiot")
+sc.tl.umap(adata, random_state=RANDOM_STATE)
+
+# Combine known reference labels and transferred query labels for visualization.
+adata.obs["supbiot_cell_type"] = adata.obs[LABEL_KEY].astype("string")
+adata.obs.loc[query_mask, "supbiot_cell_type"] = adata.obs.loc[
+    query_mask, "pred_cell_type"
+].astype("string")
+sc.pl.umap(adata, color=["batch", "supbiot_cell_type", "pred_confidence"])
 ```
 
 
 
 ### Scaling options
 
-For ultra-large datasets, use centroid-level OT:
-
-```python
-adata, metrics = scb.ot.integrate(
-    adata,    
-    obsm_key="X_pca",
-    batch_key="batch",
-    out_key="X_ot",
-    centroid=True
-)
-```
-
-
+Replace step 2 above with one of the following calls, then continue with step 3.
 For a faster approximate OT run on large datasets, enable the approximate solver:
 
 ```python
 adata, metrics = scb.ot.integrate(
-    adata,    
-    obsm_key="X_lsi",
-    batch_key="batchname_all",
-    out_key="X_ot",
+    adata,
+    obsm_key="X_ae",
+    batch_key="batch",
+    out_key="X_supbiot",
+    label_key=LABEL_KEY,
+    unlabeled_category=UNLABELED,
     approximate=True,
+    random_state=RANDOM_STATE,
 )
 ```
 
-To process snATAC-seq dataset
+For ultra-large datasets, use centroid-level OT:
 
 ```python
-
-adata_top = scb.pp.remove_promoter_proximal_peaks(
-    adata_atac,
-    "gencode.vM25.chr_patch_hapl_scaff.annotation.gtf.gz",
-)
-
-# Peak selection
-scb.pp.find_variable_features(adata_top, batch_key="batchname_all")
-
-# TF-IDF
-scb.pp.add_iterative_lsi(adata_top, n_components=31, drop_first_component=True, add_key="X_lsi")
-
-# Save back
-adata.obsm["X_lsi"] = adata_top.obsm["X_lsi"]
-adata.obsm["Unintegrated"] = adata_top.obsm["X_lsi"]
-
-# Optimal transport
 adata, metrics = scb.ot.integrate(
     adata,
-    obsm_key="X_lsi",
-    batch_key="batchname_all",
-    out_key="X_ot",
-    reference="largest",
+    obsm_key="X_ae",
+    batch_key="batch",
+    out_key="X_supbiot",
+    label_key=LABEL_KEY,
+    unlabeled_category=UNLABELED,
+    centroid=True,
+    random_state=RANDOM_STATE,
 )
-print(metrics)
-
-# 1. Compute neighbors using Harmony-corrected PCA
-sc.pp.neighbors(adata, use_rep="X_ot", metric="cosine")
-sc.tl.umap(adata)
-sc.tl.leiden(adata, resolution=0.2, key_added="leiden_X_ot")
-
 ```
 
 For cross-modality reference mapping in v1.2.0, use

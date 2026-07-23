@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import os
+import warnings
 from typing import Any, Optional, Sequence
 
 import numpy as np
@@ -235,15 +236,41 @@ def _prepare_log1p_hvg_matrix(
         else pd.DataFrame(index=adata.obs_names.copy())
     )
     adata_hvg = AnnData(X=matrix, obs=hvg_obs, var=adata.var.iloc[:, 0:0].copy())
-    sc.pp.highly_variable_genes(
-        adata_hvg,
-        n_top_genes=int(n_top_genes),
-        flavor="seurat_v3",
-        batch_key=batch_key if (batch_key is not None and batch_key in adata.obs) else None,
-        span=0.6,
-        subset=False,
+    resolved_batch_key = (
+        batch_key if (batch_key is not None and batch_key in adata.obs) else None
     )
-    hvg_mask = np.asarray(adata_hvg.var["highly_variable"].fillna(False), dtype=bool)
+    try:
+        sc.pp.highly_variable_genes(
+            adata_hvg,
+            n_top_genes=int(n_top_genes),
+            flavor="seurat_v3",
+            batch_key=resolved_batch_key,
+            span=0.6,
+            subset=False,
+        )
+    except ValueError as exc:
+        # LOESS can be singular for small subsets or already-filtered panels.
+        # Rank the variance of library-size-normalized log1p counts directly:
+        # the dispersion-based Scanpy flavors expect log-transformed input and
+        # would apply expm1 to this raw-count matrix.
+        warnings.warn(
+            "Seurat v3 HVG selection failed; falling back to variance-ranked "
+            "normalized log1p counts. "
+            f"Original error: {exc}",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        variance = _sparse_column_variance(_normalize_log1p_rows(matrix))
+        n_selected = min(int(n_top_genes), int(variance.size))
+        if n_selected <= 0:
+            raise ValueError("n_top_genes must select at least one feature.")
+        ranked = np.argsort(variance, kind="stable")
+        hvg_mask = np.zeros(variance.size, dtype=bool)
+        hvg_mask[ranked[-n_selected:]] = True
+    else:
+        hvg_mask = np.asarray(
+            adata_hvg.var["highly_variable"].fillna(False), dtype=bool
+        )
     if not np.any(hvg_mask):
         raise ValueError("No highly variable genes were selected for autoencoder input.")
 

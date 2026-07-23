@@ -55,45 +55,75 @@ and ``reticulate`` exposes the Python API:
       outFile = "ifnb.h5ad"
     )
 
-Preprocess and run PCA with Scanpy
-----------------------------------
+Build the v1.2.0 autoencoder representation
+---------------------------------------------
 
-Once the data sit in AnnData, call the same Scanpy preprocessing helpers we
-use in the Python quick start:
+Use CTRL cells as the labeled reference and STIM cells as the query. The
+``semi_cell_type`` column is defined explicitly before it is used:
 
 .. code-block:: r
 
-    sc$pp$highly_variable_genes(
-      adata,
-      n_top_genes = as.integer(2000),
-      flavor = "seurat_v3",
-      batch_key = "stim"
+    np <- import("numpy", convert = FALSE)
+    adata$obs[["cell_type"]] <- adata$obs[["seurat_annotations"]]
+    adata$obs[["semi_cell_type"]] <- np$where(
+      adata$obs[["stim"]]$astype("str")$eq("CTRL"),
+      adata$obs[["cell_type"]],
+      "Unknown"
     )
-    sc$pp$normalize_total(adata)
-    sc$pp$log1p(adata)
-    sc$pp$scale(adata)
-    sc$tl$pca(adata, n_comps = as.integer(50), use_highly_variable = TRUE)
+    adata$layers[["counts"]] <- adata$X$copy()
 
-Run optimal transport + annotate neighbors
-------------------------------------------
+    adata <- scb$pp$autoencoder(
+      adata,
+      input_key = "counts",
+      out_key = "X_ae",
+      batch_key = "stim",
+      label_key = "semi_cell_type",
+      unlabeled_category = "Unknown",
+      n_top_genes = as.integer(2000),
+      latent_dim = as.integer(30),
+      max_epochs = as.integer(30),
+      early_stop_patience = as.integer(5),
+      random_state = as.integer(0)
+    )
 
-Call the OT integrator and reuse Scanpy for graph construction and Leiden
-clustering:
+Run optimal transport + supBIOT
+-------------------------------
+
+Call the v1.2.0 supervised pipeline and reuse Scanpy for graph construction:
 
 .. code-block:: r
 
     res <- scb$ot$integrate(
       adata,
-      obsm_key = "X_pca",
-      batch_key = "stim",  # point this at your batch/condition column
-      out_key = "X_ot"
+      obsm_key = "X_ae",
+      batch_key = "stim",
+      out_key = "X_supbiot",
+      label_key = "semi_cell_type",
+      unlabeled_category = "Unknown",
+      random_state = as.integer(0)
     )
     adata <- res[[0]]
     metrics <- res[[1]]
 
-    sc$pp$neighbors(adata, use_rep = "X_ot")
+    adata <- scb$ot$supbiot(
+      adata,
+      use_rep = "X_supbiot",
+      input_rep_key = "X_ae",
+      label_key = "semi_cell_type",
+      unlabeled_category = "Unknown",
+      pred_label_key = "pred_cell_type",
+      pred_conf_key = "pred_confidence",
+      min_conf = 0,
+      random_state = as.integer(0)
+    )
+
+    sc$pp$neighbors(adata, use_rep = "X_supbiot")
     sc$tl$umap(adata)
-    sc$tl$leiden(adata, resolution = 0.8, key_added = "leiden_X_ot")
+    sc$tl$leiden(
+      adata,
+      resolution = 0.8,
+      key_added = "leiden_X_supbiot"
+    )
     adata
 
 Visualise OT embeddings inside Seurat

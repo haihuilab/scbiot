@@ -31,7 +31,8 @@ and returns a joint AnnData object.
        label_key="cell_type",
        unlabeled_category="Unknown",
        out_key="X_ae",
-       n_components=50,
+       latent_dim=50,
+       random_state=0,
    )
 
 Run reference-aligned OT on that representation, then transfer labels. The same
@@ -55,21 +56,23 @@ Run reference-aligned OT on that representation, then transfer labels. The same
        unlabeled_category="Unknown",
        pred_label_key="pred_cell_type",
        pred_conf_key="pred_confidence",
+       input_rep_key="X_ae",
        transfer_mode="logreg",
+       random_state=0,
    )
 
 Paired multiome data
 --------------------
 
-When RNA PCA and ATAC LSI rows describe the same cells in the same order, use the
-paired-aware integrator. Its default Procrustes step makes the two component
-spaces comparable before OT.
+When RNA autoencoder and ATAC LSI rows describe the same cells in the same
+order, use the paired-aware integrator. Its default Procrustes step makes the
+two component spaces comparable before OT.
 
 .. code-block:: python
 
    adata, metrics = scb.ot.integrate_paired(
        adata,
-       obsm_key="X_pca",
+       obsm_key="X_ae",
        view_key="X_lsi",
        batch_key="batch",
        out_key="X_multiome",
@@ -77,5 +80,7 @@ spaces comparable before OT.
    )
 
 For larger paired datasets, set ``approximate_ot=True`` or
-``centroid_ot=True`` on ``integrate_paired``. See :doc:`tutorials` for complete
-RNA+ATAC notebooks.
+``centroid_ot=True`` on ``integrate_paired``. Run the complete
+:doc:`tutorials/4_paired_multiomics` and
+:doc:`tutorials/5_unpaired_multiomics` notebooks for the data-download,
+gene-activity, autoencoder, OT, and supBIOT steps.

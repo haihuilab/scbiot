@@ -25,10 +25,9 @@ def _time_to_numeric(values: Any, mode: str = "auto") -> Tuple[np.ndarray, Dict[
 
     try:
         import pandas as pd
-        from pandas.api.types import is_categorical_dtype, is_datetime64_any_dtype, is_numeric_dtype
+        from pandas.api.types import is_datetime64_any_dtype, is_numeric_dtype
     except Exception:
         pd = None
-        is_categorical_dtype = None
         is_datetime64_any_dtype = None
         is_numeric_dtype = None
 
@@ -42,13 +41,17 @@ def _time_to_numeric(values: Any, mode: str = "auto") -> Tuple[np.ndarray, Dict[
             t_raw = np.asarray(series.to_numpy(), dtype=np.float32)
             return t_raw, {"mode": "continuous"}
 
-        if is_categorical_dtype(series):
-            cat = series.astype("category")
-            if cat.cat.ordered:
-                categories = list(cat.cat.categories)
+        if isinstance(series.dtype, pd.CategoricalDtype):
+            categorical_series = series.astype("category")
+            if categorical_series.cat.ordered:
+                categories = list(categorical_series.cat.categories)
             else:
-                categories = list(pd.unique(cat.astype(object)))
-                cat = pd.Categorical(cat.astype(object), categories=categories, ordered=True)
+                categories = list(pd.unique(categorical_series.astype(object)))
+            cat = pd.Categorical(
+                categorical_series.astype(object),
+                categories=categories,
+                ordered=True,
+            )
         else:
             if is_num and mode_norm == "ordinal":
                 categories = sorted(pd.unique(series))

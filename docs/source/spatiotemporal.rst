@@ -18,9 +18,16 @@ trajectory structure.
 
    import scbiot as scb
 
+   adata = scb.pp.autoencoder(
+       adata,
+       input_key="counts",
+       out_key="X_ae",
+       batch_key="sample",
+       random_state=0,
+   )
    adata, metrics = scb.ot.integrate(
        adata,
-       obsm_key="X_pca",
+       obsm_key="X_ae",
        batch_key="sample",
        out_key="X_scbiot_st",
        spatial_key="spatial",
@@ -28,6 +35,7 @@ trajectory structure.
        time_key="timepoint",
        time_weight=0.5,
        time_mode="auto",
+       random_state=0,
    )
 
 Lineage-specific velocity fields
@@ -72,11 +80,22 @@ table per lineage.
        n_perms=200,
    )
 
-After a forward transported-expression layer has been created, per-cell energy
-and gene dynamics can be visualized directly.
+Trajectory mode returns rankings for consecutive time points. To materialize a
+forward transported-expression layer for energy and gene-dynamics plots, run a
+specific adjacent comparison:
 
 .. code-block:: python
 
+   levels = list(adata.obs["timepoint"].cat.categories)
+   first_step = scb.tl.rank_transport_score(
+       adata,
+       cond1=levels[0],
+       cond2=levels[1],
+       cond_key="timepoint",
+       rep_key="X_scbiot_st",
+       store_key="first_step_transport",
+       n_perms=200,
+   )
    scb.tl.compute_transport_energy(
        adata,
        layer="transport_fwd",
@@ -91,4 +110,5 @@ and gene dynamics can be visualized directly.
        layer="transport_fwd",
    )
 
-See :doc:`tools` and :doc:`plotting` for the full downstream API.
+Run :doc:`tutorials/9_spatiotemporal_dynamics` for the complete executable
+workflow. See :doc:`tools` and :doc:`plotting` for the full downstream API.

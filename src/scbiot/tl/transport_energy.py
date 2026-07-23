@@ -30,6 +30,11 @@ def compute_transport_energy(
         Column name stored in adata.obs
     log1p
         Apply log1p transform
+
+    Returns
+    -------
+    AnnData
+        The input object with ``adata.obs[key_added]`` populated.
     """
 
     if layer not in adata.layers:
@@ -55,3 +60,4 @@ def compute_transport_energy(
         energy = np.log1p(energy)
 
     adata.obs[key_added] = energy
+    return adata
