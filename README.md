@@ -24,7 +24,32 @@ analysis for AnnData objects.
 pip install scbiot
 ```
 
-For documentation builds install `pip install scbiot[docs]`.
+The default installation contains the AE and optimal-transport pipeline without
+benchmarking frameworks, Jupyter, or FAISS. Add only the features you need:
+
+```bash
+# Jupyter kernel for the tutorial notebooks
+pip install "scbiot[notebooks]"
+
+# FAISS acceleration: choose one backend
+pip install "scbiot[cpu]"
+pip install "scbiot[gpu]"       # Linux with CUDA 12
+
+# scIB benchmarking utilities
+pip install "scbiot[analysis]"
+
+# Analysis, GPU FAISS, and notebooks together
+pip install "scbiot[full]"
+
+# Documentation toolchain
+pip install "scbiot[docs]"
+```
+
+Do not install the `cpu` and `gpu` FAISS extras together. Without either extra,
+scBIOT uses its scikit-learn fallback where available; centroid interpolation
+requires a FAISS backend. See the
+[installation guide](https://scbiot.readthedocs.io/en/stable/installation.html)
+for details.
 
 ## Data availability
 
@@ -32,14 +57,6 @@ Prepared tutorial inputs are archived in the
 [scBIOT Figshare collection](https://figshare.com/articles/dataset/Anndata_for_scBIOT_analysis/30671669).
 Inputs not present there are linked to their original providers in the
 [data-source documentation](https://scbiot.readthedocs.io/en/stable/data_source.html).
-
-### Optional extras
-
-For an exact replica of the development environment, use
-`pip install -r requirements.txt` inside a fresh virtual environment. The
-default package dependencies target CUDA 12; see the
-[installation guide](https://scbiot.readthedocs.io/en/stable/installation.html)
-for CPU and GPU notes.
 
 ## Quick start
 

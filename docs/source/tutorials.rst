@@ -28,7 +28,13 @@ repository root:
 
 .. code-block:: bash
 
-    pip install scbiot    
+    pip install "scbiot[notebooks]"
+
+For Linux GPU acceleration, install the notebook and GPU extras together:
+
+.. code-block:: bash
+
+    pip install "scbiot[gpu,notebooks]"
 
 The notebooks are deterministic by default. ``SCBIOT_TUTORIAL_DATA`` selects a
 shared download directory and ``SCBIOT_TUTORIAL_MAX_CELLS`` bounds large

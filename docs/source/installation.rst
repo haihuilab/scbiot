@@ -13,6 +13,37 @@ The published wheels include all core dependencies:
 
     pip install scbiot
 
+The core installation provides the autoencoder and optimal-transport pipeline.
+Benchmarking frameworks, Jupyter, and FAISS are optional.
+
+Optional installations
+----------------------
+
+Install only the features needed for a workflow:
+
+.. code-block:: bash
+
+    # Jupyter kernel for the tutorial notebooks
+    pip install "scbiot[notebooks]"
+
+    # FAISS acceleration: choose one backend
+    pip install "scbiot[cpu]"
+    pip install "scbiot[gpu]"       # Linux with CUDA 12
+
+    # scIB benchmarking utilities
+    pip install "scbiot[analysis]"
+
+    # Analysis, GPU FAISS, and notebooks together
+    pip install "scbiot[full]"
+
+    # Documentation toolchain
+    pip install "scbiot[docs]"
+
+Do not install the ``cpu`` and ``gpu`` FAISS extras together because both
+provide the ``faiss`` Python module. Without a FAISS extra, scBIOT uses its
+scikit-learn nearest-neighbor fallback where available. Centroid interpolation
+requires either the CPU or GPU FAISS extra.
+
 
 Editable install
 ----------------
@@ -25,7 +56,13 @@ Clone the repository if you want to run the tutorial notebooks or contribute:
     cd scbiot
     pip install -e .
 
-The notebooks are stored in the repository's ``tutorials/`` directory.
+The notebooks are stored in the repository's ``tutorials/`` directory. Install
+editable extras with the same syntax, for example:
+
+.. code-block:: bash
+
+    pip install -e ".[notebooks]"
+    pip install -e ".[gpu,notebooks]"
 
 Test your setup
 ---------------
@@ -38,6 +75,6 @@ Confirm that the package imports and report the installed version:
     print(scbiot.__version__)
 
 If you see an ``ImportError`` after installation, upgrade ``pip``/``setuptools``
-and retry the command. GPU users should install a CUDA-matching build of
-``torch``, ``faiss-gpu`` or ``jax[cuda12]`` *before* installing scBIOT to ensure
-the correct binaries are picked up.
+and retry the command. GPU users should confirm that the NVIDIA driver is
+compatible with the CUDA runtime selected by PyTorch and
+``faiss-gpu-cu12``.
