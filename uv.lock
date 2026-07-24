@@ -1750,10 +1750,12 @@ full = [
     { name = "ipykernel" },
     { name = "scib" },
     { name = "scib-metrics" },
+    { name = "torch", marker = "sys_platform == 'linux'" },
     { name = "wandb" },
 ]
 gpu = [
     { name = "faiss-gpu-cu12", marker = "sys_platform == 'linux'" },
+    { name = "torch", marker = "sys_platform == 'linux'" },
 ]
 notebooks = [
     { name = "ipykernel" },
@@ -1789,7 +1791,9 @@ requires-dist = [
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=9.1,<10" },
     { name = "sphinx-rtd-theme", marker = "extra == 'docs'", specifier = ">=3.1" },
     { name = "statsmodels", specifier = ">=0.14" },
-    { name = "torch", specifier = ">=2.5.0" },
+    { name = "torch", specifier = ">=2.5,<2.11" },
+    { name = "torch", marker = "sys_platform == 'linux' and extra == 'full'", specifier = "==2.10.0" },
+    { name = "torch", marker = "sys_platform == 'linux' and extra == 'gpu'", specifier = "==2.10.0" },
     { name = "wandb", marker = "extra == 'analysis'", specifier = "==0.21.1" },
     { name = "wandb", marker = "extra == 'full'", specifier = "==0.21.1" },
     { name = "wrapt", specifier = ">=1.10.10,<2" },

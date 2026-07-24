@@ -47,7 +47,8 @@ pip install "scbiot[docs]"
 
 Do not install the `cpu` and `gpu` FAISS extras together. Without either extra,
 scBIOT uses its scikit-learn fallback where available; centroid interpolation
-requires a FAISS backend. See the
+requires a FAISS backend. On Linux, the GPU extra uses PyTorch 2.10 with CUDA
+12.8 and FAISS GPU 1.14; use an NVIDIA 570-series or newer driver. See the
 [installation guide](https://scbiot.readthedocs.io/en/stable/installation.html)
 for details.
 

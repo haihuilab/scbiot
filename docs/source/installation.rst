@@ -44,6 +44,11 @@ provide the ``faiss`` Python module. Without a FAISS extra, scBIOT uses its
 scikit-learn nearest-neighbor fallback where available. Centroid interpolation
 requires either the CPU or GPU FAISS extra.
 
+On Linux, ``scbiot[gpu]`` resolves PyTorch 2.10 with CUDA 12.8 and
+``faiss-gpu-cu12`` 1.14.1. Use an NVIDIA 570-series or newer driver for this
+profile. PyTorch 2.11 and newer use CUDA 13 wheels and are intentionally
+excluded because CUDA 13 requires a newer NVIDIA driver.
+
 
 Editable install
 ----------------
@@ -76,5 +81,5 @@ Confirm that the package imports and report the installed version:
 
 If you see an ``ImportError`` after installation, upgrade ``pip``/``setuptools``
 and retry the command. GPU users should confirm that the NVIDIA driver is
-compatible with the CUDA runtime selected by PyTorch and
+compatible with the CUDA 12.8 runtime selected by PyTorch and
 ``faiss-gpu-cu12``.
